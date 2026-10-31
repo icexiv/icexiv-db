@@ -113,6 +113,8 @@ nix fmt
 
 当前构建的阶段计时、CPU 采样和优化优先级见 [Tera 2 构建耗时剖析](docs/profile-2026-10-31.md)。
 
+Registry 与共享上下文的四步实现、逐步收益和五轮原始值见 [分步优化记录](docs/registry-context-2026-10-31.md)。
+
 ## 依赖与发布
 
 Notist 来自 `github:AzurIce/notist`；Nixpkgs、Crane、rust-overlay 和 flake-utils
