@@ -111,6 +111,8 @@ nix fmt
 
 迁移前后的全量 release 构建性能及产物校验见 [Tera 2 迁移性能记录](docs/performance-2026-10-31.md)。
 
+当前构建的阶段计时、CPU 采样和优化优先级见 [Tera 2 构建耗时剖析](docs/profile-2026-10-31.md)。
+
 ## 依赖与发布
 
 Notist 来自 `github:AzurIce/notist`；Nixpkgs、Crane、rust-overlay 和 flake-utils
