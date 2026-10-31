@@ -12,6 +12,7 @@
 - 按名称或 ID 子串搜索，每页 100 件，搜索词和页码保存在 URL，支持浏览器前进与后退。
 - 详情链接形如 `items/1.html`，描述和基本字段直接存在 HTML 中，不需要 JavaScript。
 - Notist 站点扩展从 CSV 生成全部物品页与分页目录；浏览器只为搜索加载精简索引。
+- 分页模板数据只保存 id/path/name/category 摘要；完整物品描述和属性保留在 site.data.items，详情 HTML 不受影响。
 - 当前未接入图标图片、分类中文名和获取来源。条目存在不代表当前可获得，未展示来源不代表无法获得。
 
 关闭 JavaScript 或搜索索引加载失败时，仍可浏览全部分页目录和物品详情。这里也是 Notist 数据驱动 SSG 的实践评估：构建性能问题应在 Notist 侧定位，而不是改成浏览器加载详情来绕过。
@@ -31,7 +32,7 @@ nix develop -c notist build
 
 或者直接 `nix build`：Nix 根据固定 URL 与哈希获取 CSV，在沙箱中准备数据并构建，不需要先执行 fetch/prepare。正常进入 `nix develop` 不会下载游戏数据。
 
-本次全量构建使用 Notist 本地工作区中的 Tera 2 引擎及 SSG 上下文复用修复；这些改动尚未提交发布，默认 flake.lock 仍固定远端旧版。开发联调使用显式 override，不把本机路径写进项目依赖：
+本次全量构建使用 Notist 本地工作区中的 Tera 2 引擎及 SSG 优化；这些改动尚未包含在当前锁定的远端版本中，默认 flake.lock 仍固定旧版。开发联调使用显式 override，不把本机路径写进项目依赖：
 
 ```sh
 nix build --no-write-lock-file --override-input notist /home/azurice/Files/notist
@@ -114,6 +115,8 @@ nix fmt
 当前构建的阶段计时、CPU 采样和优化优先级见 [Tera 2 构建耗时剖析](docs/profile-2026-10-31.md)。
 
 Registry 与共享上下文的四步实现、逐步收益和五轮原始值见 [分步优化记录](docs/registry-context-2026-10-31.md)。
+
+Prepare 编码、目录摘要、语义 Registry 与环境查询的后续实测见 [Prepare 与语义环境优化记录](docs/prepare-environment-2026-10-31.md)。
 
 ## 依赖与发布
 
