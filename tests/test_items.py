@@ -92,6 +92,11 @@ class ItemTests(unittest.TestCase):
         pages = site["data"]["catalog"]["pages"]
         self.assertEqual(len(pages["1"]["items"]), 100)
         self.assertEqual(len(pages["2"]["items"]), 1)
+        self.assertEqual(pages["1"]["items"][0], {
+            "id": 1, "path": "items/1.html", "name": "物品 1", "category": 0,
+        })
+        self.assertIn("description", site["data"]["items"]["1"])
+        self.assertIn("untradable", site["data"]["items"]["1"])
         self.assertEqual(pages["1"]["next"], "items/page/2.html")
         self.assertEqual(pages["2"]["previous"], "items/index.html")
         self.assertIsNone(pages["2"]["next"])

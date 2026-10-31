@@ -136,7 +136,12 @@ def extend(request, input_path, limit=None):
     for page in range(1, page_count + 1):
         path = "items/index.not" if page == 1 else f"items/page/{page}.not"
         catalog["pages"][str(page)] = {
-            "items": items[(page - 1) * PAGE_SIZE:page * PAGE_SIZE],
+            # The directory only renders these fields. Keep full descriptions
+            # and detail attributes once in data.items, not again in every page.
+            "items": [
+                {key: item[key] for key in ("id", "path", "name", "category")}
+                for item in items[(page - 1) * PAGE_SIZE:page * PAGE_SIZE]
+            ],
             "number": page, "total": page_count,
             "previous": ("items/index.html" if page == 2 else f"items/page/{page - 1}.html") if page > 1 else None,
             "next": f"items/page/{page + 1}.html" if page < page_count else None,
