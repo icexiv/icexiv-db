@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    {% include 'head' %}
+    {% if assets.highlight %}
+      <link rel="stylesheet" href="{{assets.highlight}}">
+    {% endif %}
+  </head>
+  <body>
+    {% include 'header' %}
+    <main>{{page.html | safe}}</main>
+    {% include 'footer' %}
+    {% if assets.components %}
+      <script type="module" src="{{assets.components}}"></script>
+    {% endif %}
+  </body>
+</html>

@@ -1,0 +1,10 @@
+/.direnv/
+/dist/
+/target/
+/result
+/result-*
+.env
+/inputs/
+/data/
+/static/generated/
+__pycache__/

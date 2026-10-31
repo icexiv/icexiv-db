@@ -1,0 +1,15 @@
+[project]
+name = "xiv-db"
+
+[[site]]
+name = "xiv-db"
+title = "IceXIV DB"
+base_url = "/"
+content = "content"
+templates = "templates"
+static_dir = "static"
+
+[[site.extensions]]
+kind = "command"
+command = ["python3", "scripts/items.py", "extension"]
+watch = ["scripts", "sources", "inputs/Item.csv"]

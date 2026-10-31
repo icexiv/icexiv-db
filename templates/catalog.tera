@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>{% include 'head' %}</head>
+<body>
+{% include 'header' %}
+<main>
+  <h1>物品目录</h1>
+  <p>国服客户端中有名称的 Item 条目，不限于可交易物品。条目存在不代表当前仍可获得。</p>
+  <div class="source-note">
+    <strong>{{site.data.catalog.count}} 件物品</strong>
+    <span>客户端 {{site.data.catalog.source.gameVersion}}</span>
+    <a href="{{site.data.catalog.sourceUrl}}">原始 CSV</a>
+  </div>
+  <section id="catalog" data-index-url="{{url(path=site.data.catalog.assetPath ~ '/index.json')}}" data-detail-base="{{url(path='items/')}}" data-catalog-url="{{url(path='items/index.html')}}" data-page-size="{{site.data.catalog.pageSize}}">
+    <form id="search-form" role="search" class="search-form" hidden>
+      <label for="query">搜索物品</label>
+      <div class="search-controls"><input id="query" type="search" name="q" placeholder="输入名称或物品 ID" autocomplete="off"><button type="submit">搜索</button></div>
+    </form>
+    <p id="catalog-status" role="status">每页 {{site.data.catalog.pageSize}} 件条目。所有条目和详情均为静态页面；启用 JavaScript 可搜索。</p>
+    <div class="table-scroll">
+      <table><thead><tr><th scope="col">ID</th><th scope="col">物品名称</th><th scope="col">分类 ID</th></tr></thead>
+      <tbody id="item-rows">
+      {% set listing = site.data.catalog.pages[page.attrs.catalog_page] %}
+      {% for item in listing.items %}
+        <tr><td class="numeric">{{item.id}}</td><td><a href="{{url(path=item.path)}}">{{item.name}}</a></td><td class="numeric">{{item.category}}</td></tr>
+      {% endfor %}
+      </tbody></table>
+    </div>
+    <nav class="pagination" aria-label="静态物品目录分页">
+      {% if listing.previous %}<a href="{{url(path=listing.previous)}}">上一页</a>{% endif %}
+      <span>第 {{listing.number}} / {{listing.total}} 页</span>
+      {% if listing.next %}<a href="{{url(path=listing.next)}}">下一页</a>{% endif %}
+    </nav>
+    <nav id="pagination" class="pagination" aria-label="搜索结果分页" hidden><button id="previous" type="button">上一页</button><span id="page-status"></span><button id="next" type="button">下一页</button></nav>
+    <noscript><p>搜索需要 JavaScript；浏览目录、翻页和查看详情不需要。</p></noscript>
+  </section>
+  <p class="muted">分类当前展示原始 ID；尚未接入分类名称、图标图片和获取途径。未展示来源不代表物品无法获得。</p>
+</main>
+{% include 'footer' %}
+<script type="module" src="{{url(path='catalog.js')}}"></script>
+</body></html>

@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>{% include 'head' %}</head>
+<body>
+{% include 'header' %}
+<main>
+  <a class="back-link" href="{{url(path='items/index.html')}}">← 物品目录</a>
+  {% set item = site.data.items[page.attrs.item_id] %}
+  <section id="item-detail">
+    <h1>{{item.name}}</h1>
+    <p class="muted">物品 #{{item.id}} · 固定版本数据</p>
+    <div id="detail-content">
+      <p id="item-description" class="description">{% if item.description %}{{item.description}}{% else %}暂无描述。{% endif %}</p>
+      <dl id="item-fields" class="item-fields">
+        <div><dt>物品 ID</dt><dd>{{item.id}}</dd></div>
+        <div><dt>分类 ID</dt><dd>{{item.category}}</dd></div>
+        <div><dt>搜索分类 ID</dt><dd>{{item.searchCategory}}</dd></div>
+        <div><dt>装备等级</dt><dd>{{item.equipLevel}}</dd></div>
+        <div><dt>稀有度</dt><dd>{{item.rarity}}</dd></div>
+        <div><dt>堆叠上限</dt><dd>{{item.stackSize}}</dd></div>
+        <div><dt>独占</dt><dd>{% if item.unique %}是{% else %}否{% endif %}</dd></div>
+        <div><dt>不可交易</dt><dd>{% if item.untradable %}是{% else %}否{% endif %}</dd></div>
+        <div><dt>可 HQ</dt><dd>{% if item.hq %}是{% else %}否{% endif %}</dd></div>
+        <div><dt>图标 ID</dt><dd>{{item.icon}}</dd></div>
+      </dl>
+      <section class="notice"><h2>获取途径</h2><p>此版本只接入 Item 表，尚未收录来源。不能据此判断物品不可获得。</p></section>
+    </div>
+  </section>
+  <p class="muted">客户端版本 {{site.data.catalog.source.gameVersion}} · <a href="{{site.data.catalog.sourceUrl}}">原始数据</a></p>
+</main>
+{% include 'footer' %}
+</body></html>

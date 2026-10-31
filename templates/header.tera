@@ -1,0 +1,5 @@
+<header class="site-header">
+  <a class="brand" href="{{url(path='index.html')}}">IceXIV <span>DB</span></a>
+  <nav aria-label="主导航"><a href="{{url(path='items/index.html')}}">物品目录</a></nav>
+  <span class="preview-label">数据预览</span>
+</header>
