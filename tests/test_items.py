@@ -2,6 +2,7 @@ import csv
 import hashlib
 import importlib.util
 import io
+import json
 from pathlib import Path
 import unittest
 from unittest.mock import patch
@@ -25,6 +26,21 @@ def fixture(entries, headers=None):
 
 
 class ItemTests(unittest.TestCase):
+    def test_response_encoding_preserves_protocol_values_and_unicode(self):
+        response = {"version": 1, "input": {"text": "<物品>\n\"反斜线\\", "values": [True, False, None, -(2**63), 2**64 - 1]}}
+        output = io.StringIO()
+        items.write_response(response, output)
+        self.assertEqual(json.loads(output.getvalue()), response)
+        self.assertIn("物品", output.getvalue())
+        self.assertNotIn(": ", output.getvalue())
+        self.assertFalse(output.getvalue().endswith("\n"))
+
+    def test_extension_errors_still_use_the_response_protocol(self):
+        output = io.StringIO()
+        with patch("sys.argv", ["items.py", "extension"]), patch("sys.stdin", io.StringIO("{}")), patch("sys.stdout", output), patch.object(items, "extend", side_effect=ValueError("无效输入")):
+            items.main()
+        self.assertEqual(json.loads(output.getvalue()), {"version": 1, "errors": ["无效输入"]})
+
     def test_real_csv_quoting_and_boolean_formats(self):
         raw = fixture([{"#": "12", "Name": '<测试>,"物品"', "Description": "第一行\n第二行",
                         "IsUnique": "True", "IsUntradable": "0", "CanBeHq": "1"}])

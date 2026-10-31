@@ -145,6 +145,12 @@ def extend(request, input_path, limit=None):
     return {"version": 1, "input": site}
 
 
+def write_response(response, stream):
+    # Encode in one batch: json.dump otherwise walks the response through
+    # millions of Python generator steps before writing its small fragments.
+    stream.write(json.dumps(response, ensure_ascii=False, separators=(",", ":")))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=["fetch", "prepare", "extension"])
@@ -156,7 +162,7 @@ def main():
             response = extend(json.load(sys.stdin), args.input, args.limit)
         except Exception as error:
             response = {"version": 1, "errors": [str(error)]}
-        json.dump(response, sys.stdout, ensure_ascii=False)
+        write_response(response, sys.stdout)
     elif args.action == "fetch":
         source = manifest()
         with urllib.request.urlopen(source_url(source), timeout=120) as response:
