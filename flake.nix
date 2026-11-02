@@ -1,5 +1,5 @@
 {
-  description = "xiv-db — data-driven FFXIV wiki built with Notist";
+  description = "icexiv-db — data-driven FFXIV wiki built with Notist";
 
   inputs = {
     notist.url = "github:AzurIce/notist";
@@ -48,7 +48,7 @@
             sha256 = itemSource.sha256;
           };
           site = pkgs.stdenvNoCC.mkDerivation {
-            pname = "xiv-db";
+            pname = "icexiv-db";
             version = "0.1.0";
             src = pkgs.lib.fileset.toSource {
               root = ./.;
@@ -71,13 +71,13 @@
               mkdir -p inputs
               cp ${itemCsv} inputs/Item.csv
               notist build
-              python3 scripts/check_site.py dist/xiv-db
+              python3 scripts/check_site.py dist/icexiv-db
               runHook postBuild
             '';
             installPhase = ''
               runHook preInstall
               mkdir -p "$out"
-              cp -r dist/xiv-db/. "$out/"
+              cp -r dist/icexiv-db/. "$out/"
               runHook postInstall
             '';
           };
@@ -85,12 +85,12 @@
         {
           packages = {
             default = site;
-            xiv-db = site;
+            icexiv-db = site;
             notist = notistPackage;
           };
           checks.site = site;
           checks.data =
-            pkgs.runCommand "xiv-db-data-tests"
+            pkgs.runCommand "icexiv-db-data-tests"
               {
                 nativeBuildInputs = [ pkgs.python3 ];
                 src = pkgs.lib.fileset.toSource {
@@ -108,7 +108,7 @@
                 python3 -m unittest discover -s tests -v
                 touch "$out"
               '';
-          formatter = pkgs.writeShellScriptBin "xiv-db-fmt" ''
+          formatter = pkgs.writeShellScriptBin "icexiv-db-fmt" ''
             if [ "$#" -eq 0 ]; then
               set -- flake.nix
             fi

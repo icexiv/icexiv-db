@@ -21,7 +21,7 @@ class Links(HTMLParser):
 
 
 def main():
-    output = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "dist/xiv-db"
+    output = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "dist/icexiv-db"
     catalog = json.loads((ROOT / "data/catalog.json").read_text())
     index = json.loads((output / catalog["assetPath"] / "index.json").read_text())
     assert len(index) == catalog["count"]

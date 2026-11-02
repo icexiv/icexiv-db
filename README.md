@@ -1,6 +1,8 @@
-# xiv-db
+# icexiv-db
 
 基于 Notist 的数据驱动 FF14 Wiki，属于 IceXIV 网站组。
+
+仓库：<https://github.com/icexiv/icexiv-db>（原项目名 `xiv-db`）。
 
 当前提供国服物品目录预览，尚未配置生产域名或部署上线。
 
@@ -26,7 +28,7 @@ nix develop -c python3 scripts/items.py fetch
 # 从已下载输入生成版本元数据与搜索索引，不访问网络。
 nix develop -c python3 scripts/items.py prepare
 
-# 构建到 dist/xiv-db/
+# 构建到 dist/icexiv-db/
 nix develop -c notist build
 ```
 
@@ -74,7 +76,7 @@ Clippy、rust-src、rust-analyzer，以及 Notist、Git 和 Python 3。
 ## 构建与检查
 
 ```sh
-# 构建到 dist/xiv-db/
+# 构建到 dist/icexiv-db/
 nix develop -c notist build
 
 # 检查内容
@@ -131,4 +133,4 @@ nix flake check
 ```
 
 `base_url` 暂设为 `/`。确定正式域名后再修改 `Notist.toml`，部署时发布
-`dist/xiv-db/` 的内容，或使用 `nix build` 的产物。
+`dist/icexiv-db/` 的内容，或使用 `nix build` 的产物。

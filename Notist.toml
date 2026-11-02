@@ -1,8 +1,8 @@
 [project]
-name = "xiv-db"
+name = "icexiv-db"
 
 [[site]]
-name = "xiv-db"
+name = "icexiv-db"
 title = "IceXIV DB"
 base_url = "/"
 content = "content"
