@@ -1,10 +1,12 @@
 /.direnv/
 /dist/
 /target/
+/tools/icon-export/target
 /result
 /result-*
 .env
 /inputs/
 /data/
+/content/.data/
 /static/generated/
 __pycache__/

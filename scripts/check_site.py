@@ -31,6 +31,11 @@ def main():
     expected_pages = (len(index) + catalog["pageSize"] - 1) // catalog["pageSize"]
     assert 1 + len(list((output / "items/page").glob("*.html"))) == expected_pages
     failures = []
+    for record in index:
+        icon = record[3]
+        assert icon.startswith("/"), "Search icons must use site-root-relative asset paths"
+        if not (output / icon.lstrip("/")).is_file():
+            failures.append(f"search item {record[0]}: {icon}")
     for path in output.rglob("*.html"):
         parser = Links()
         parser.feed(path.read_text())

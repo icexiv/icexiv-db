@@ -57,6 +57,7 @@
                 ./content
                 ./templates
                 ./static
+                ./modules
                 ./scripts
                 ./sources
               ];
@@ -92,7 +93,10 @@
           checks.data =
             pkgs.runCommand "icexiv-db-data-tests"
               {
-                nativeBuildInputs = [ pkgs.python3 ];
+                nativeBuildInputs = [
+                  pkgs.python3
+                  pkgs.nodejs
+                ];
                 src = pkgs.lib.fileset.toSource {
                   root = ./.;
                   fileset = pkgs.lib.fileset.unions [
@@ -106,6 +110,7 @@
                 chmod -R u+w source
                 cd source
                 python3 -m unittest discover -s tests -v
+                node --test tests/catalog.test.cjs
                 touch "$out"
               '';
           formatter = pkgs.writeShellScriptBin "icexiv-db-fmt" ''
@@ -119,6 +124,7 @@
               notistPackage
               pkgs.git
               pkgs.python3
+              pkgs.nodejs
             ];
           };
         }

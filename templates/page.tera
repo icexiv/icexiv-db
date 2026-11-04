@@ -8,8 +8,13 @@
   </head>
   <body>
     {% include 'header' %}
-    <main>{{page.html | safe}}</main>
+    {% set first_page = page.route.path == 'items/index.not' %}
+    {% set catalog_page = first_page or page.route.path is starting_with(pat='items/page/') %}
+    <main{% if catalog_page %} id="catalog-page" data-asset-root="{% if first_page %}../{% else %}../../{% endif %}" data-index-url="{% if first_page %}../{{site.data.catalog.assetPath}}/index.json{% else %}../../{{site.data.catalog.assetPath}}/index.json{% endif %}" data-detail-base="{% if first_page %}./{% else %}../{% endif %}" data-catalog-url="{% if first_page %}index.html{% else %}../index.html{% endif %}" data-page-size="{{site.data.catalog.pageSize}}"{% endif %}>{{page.html | replace(from='<img ', to='<img loading="lazy" decoding="async" width="32" height="32" ') | safe}}</main>
     {% include 'footer' %}
+    {% if catalog_page %}
+      <script type="module" src="{{url(path='catalog.js')}}"></script>
+    {% endif %}
     {% if assets.components %}
       <script type="module" src="{{assets.components}}"></script>
     {% endif %}
