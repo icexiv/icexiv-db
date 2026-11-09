@@ -1,6 +1,4 @@
-"""Optional offline Notist integration using newly authored CSV/PNG fixtures."""
-import hashlib
-import json
+"""Optional offline Notist integration using newly authored game export fixtures."""
 import os
 from pathlib import Path
 import shutil
@@ -9,7 +7,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from test_items import fixture, icon_fixture, items
+from test_items import export_fixture, item_fixture, items
 
 
 @unittest.skipUnless(os.environ.get("NOTIST_TEST_BIN"), "Set NOTIST_TEST_BIN to run the offline site fixture")
@@ -24,23 +22,16 @@ class IconSiteTests(unittest.TestCase):
             shutil.copy(repository / "Notist.toml", root)
             (root / "content").mkdir()
             (root / "content/index.not").write_text("= Test\n")
-            raw = fixture([{"#": str(i), "Name": f"物品 {i}", "Icon": "12" if i % 2 else "0"}
-                           for i in range(1, 102)])
-            source = {"sha256": hashlib.sha256(raw).hexdigest(), "gameVersion": "synthetic",
-                      "repository": "example/test", "commit": "test", "path": "Item.csv"}
-            items.write_json(root / "sources/item.json", source)
-            (root / "inputs").mkdir()
-            (root / "inputs/Item.csv").write_bytes(raw)
-            export = icon_fixture(root / "icons", source)
-            export["icons"]["0"] = {"status": "unconfigured"}
-            items.write_json(root / "icons/manifest.json", export)
+            bundle, _ = export_fixture(root, [item_fixture(i, icon=12 if i % 2 else 0) for i in range(1, 102)])
             with patch.object(items, "ROOT", root):
-                items.prepare(root / "inputs/Item.csv", root / "icons")
+                items.prepare(bundle)
+            self.assertFalse((root / "data/catalog.json").exists())
             result = subprocess.run([os.environ["NOTIST_TEST_BIN"], "build"], cwd=root,
                                     capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-            output = root / "dist/icexiv-db"
-            catalog = json.loads((root / "data/catalog.json").read_text())
+            output = root / "notist-output/icexiv-db"
+            with patch.object(items, "ROOT", root):
+                _, catalog = items.prepared_catalog(bundle)
             icon_path = catalog["assetPath"] + "/icons/12.png"
             for page, prefix in [("items/1.html", "../"), ("items/index.html", "../"),
                                  ("items/page/2.html", "../../")]:
@@ -49,4 +40,9 @@ class IconSiteTests(unittest.TestCase):
                 self.assertIn('loading="lazy"', html)
                 self.assertIn('width="32" height="32"', html)
             self.assertIn('src="../icon-placeholder.svg"', (output / "items/2.html").read_text())
-            self.assertEqual((output / icon_path).read_bytes(), (root / "icons/12.png").read_bytes())
+            self.assertEqual((output / icon_path).read_bytes(), (bundle / "icons/12.png").read_bytes())
+            self.assertNotIn("CSV", (output / "items/index.html").read_text())
+            self.assertNotIn("datamining", (output / "items/1.html").read_text())
+            self.assertIn("客户端 synthetic", (output / "items/1.html").read_text())
+            self.assertIn(f'data-index-url="../{catalog["assetPath"]}/index.json"',
+                          (output / "items/index.html").read_text())

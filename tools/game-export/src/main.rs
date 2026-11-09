@@ -1,34 +1,26 @@
-//! Offline, deduplicated PNG export for the site's pinned Item input.
+//! Offline Item sheet and icon export from one version-checked installation.
+mod sheet;
+mod text;
+
 use icexiv_data::{
     sqpack::{Error as PackError, PackSource, SqPack, local::Local},
     tex::Tex,
 };
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use sha2::{Digest, Sha256};
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    error::Error,
-    path::PathBuf,
-};
+use std::{collections::BTreeMap, error::Error, path::PathBuf};
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
 const BUDGET: usize = 64 * 1024 * 1024;
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct Request {
-    version: u32,
-    game_version: String,
-    csv_sha256: String,
-    icon_ids: BTreeSet<u32>,
-}
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct Manifest {
     version: u32,
-    game_version: String,
-    csv_sha256: String,
+    source: sheet::Source,
+    items_sha256: String,
+    item_count: usize,
+    text_macros: BTreeMap<u8, usize>,
     icons: BTreeMap<u32, Entry>,
 }
 
@@ -91,33 +83,43 @@ async fn read_icon<S: PackSource>(
 
 async fn run() -> Result<()> {
     let args: Vec<_> = std::env::args_os().skip(1).collect();
-    const USAGE: &str = "Usage: icon-export <request.json> <game/sqpack> <game-version> <new-output-directory>\nThe version is an explicit assertion about the supplied installation; it must match the CSV. Keep the installation stable while exporting.";
+    const USAGE: &str = "Usage: game-export <schema.json> <installation-root> <new-output-directory>\n       game-export --inspect <installation-root>\nReads game/ffxivgame.ver and game/sqpack. Keep the installation stable while exporting.";
     if args.len() == 1 && args[0] == "--help" {
         println!("{USAGE}");
         return Ok(());
     }
-    if args.len() != 4 {
+    if args.len() == 2 && args[0] == "--inspect" {
+        return sheet::inspect(PathBuf::from(&args[1])).await;
+    }
+    if args.len() != 3 {
         return Err(USAGE.into());
     }
-    let request_bytes = std::fs::read(&args[0])?;
-    let request: Request = serde_json::from_slice(&request_bytes)?;
-    if request.version != 1 || args[2].to_str() != Some(&request.game_version) {
-        return Err("Request version or asserted game version does not match".into());
+    let schema_bytes = std::fs::read(&args[0])?;
+    let schema: sheet::Schema = serde_json::from_slice(&schema_bytes)?;
+    let installation = PathBuf::from(&args[1]);
+    let version = sheet::version(&installation)?;
+    if schema.version != 1 || schema.game_version != version {
+        return Err("Schema does not match the installed game version".into());
     }
-    if request.csv_sha256.len() != 64 || !request.csv_sha256.bytes().all(|c| c.is_ascii_hexdigit())
-    {
-        return Err("Invalid CSV SHA-256".into());
-    }
-    let source = Local::new(PathBuf::from(&args[1])).await?;
+    let source = Local::new(installation.join("game/sqpack")).await?;
     let pack = SqPack::new(source)
         .with_max_read_bytes(Some(BUDGET))
         .with_index_cache(Some(BUDGET));
-    let output = PathBuf::from(&args[3]);
+    let (items, source, text_macros) = sheet::read_items(&pack, &schema, &schema_bytes).await?;
+    let output = PathBuf::from(&args[2]);
     // Never overwrite an existing export or unrelated directory.
     std::fs::create_dir(&output)?;
+    let item_bytes = serde_json::to_vec(&items)?;
+    let items_sha256 = format!("{:x}", Sha256::digest(&item_bytes));
+    std::fs::write(output.join("items.json"), item_bytes)?;
+    std::fs::create_dir(output.join("icons"))?;
     let mut icons = BTreeMap::new();
     let mut failed = 0;
-    for id in request.icon_ids {
+    let ids = items
+        .iter()
+        .map(|item| item.icon)
+        .collect::<std::collections::BTreeSet<_>>();
+    for id in ids {
         let result: Result<Entry> = async {
             if id == 0 {
                 return Ok(Entry::Unconfigured);
@@ -127,7 +129,7 @@ async fn run() -> Result<()> {
             };
             let (png, width, height) = png_bytes(&bytes)?;
             let sha256 = format!("{:x}", Sha256::digest(&png));
-            std::fs::write(output.join(format!("{id}.png")), png)?;
+            std::fs::write(output.join("icons").join(format!("{id}.png")), png)?;
             Ok(Entry::Exported {
                 resource,
                 sha256,
@@ -147,10 +149,17 @@ async fn run() -> Result<()> {
         };
         icons.insert(id, entry);
     }
+    if sheet::version(&installation)? != version {
+        return Err(
+            "Installation version changed during export; discard this incomplete export".into(),
+        );
+    }
     let manifest = Manifest {
         version: 1,
-        game_version: request.game_version,
-        csv_sha256: request.csv_sha256,
+        source,
+        items_sha256,
+        item_count: items.len(),
+        text_macros,
         icons,
     };
     std::fs::write(output.join("manifest.json"), serde_json::to_vec(&manifest)?)?;

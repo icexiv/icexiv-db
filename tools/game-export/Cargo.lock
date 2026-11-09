@@ -15,6 +15,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3d62b7694a562cdf5a74227903507c56ab2cc8bdd1f781ed5cb4cf9c9f810bfc"
 
 [[package]]
+name = "bcdec_rs"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f09c37bc0e9f0924b7dae9988265ef3c76c88538f41a3b06caf4bed07cee5226"
+
+[[package]]
 name = "binrw"
 version = "0.15.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -142,6 +148,7 @@ dependencies = [
 name = "icexiv-data"
 version = "0.1.0"
 dependencies = [
+ "bcdec_rs",
  "binrw",
  "crc32fast",
  "flate2",
@@ -149,7 +156,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "icexiv-db-icon-export"
+name = "icexiv-db-game-export"
 version = "0.1.0"
 dependencies = [
  "icexiv-data",

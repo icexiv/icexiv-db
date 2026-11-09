@@ -1,15 +1,13 @@
-[project]
+[package]
 name = "icexiv-db"
 
-[[site]]
-name = "icexiv-db"
+[site]
 title = "IceXIV DB"
 base_url = "/"
 content = "content"
 templates = "templates"
 static_dir = "static"
 
-[[site.extensions]]
-kind = "command"
+[site.extensions.items]
 command = ["python3", "scripts/items.py", "extension"]
-watch = ["scripts", "sources", "inputs/Item.csv"]
+watch = ["scripts", "sources", "inputs/game-export/manifest.json", "inputs/game-export/items.json", "content/.data/prepared.json"]

@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "gameVersion": "2026.10.06.0000.0000",
+  "language": "chs",
+  "exhSha256": "c5781f32c0a5270d92bb51481acb17f5c7c6ab5e25994f44c9b83c9874fd4ebe",
+  "fields": {
+    "name": { "column": 9, "kind": "String" },
+    "description": { "column": 8, "kind": "String" },
+    "icon": { "column": 10, "kind": "UInt16" },
+    "category": { "column": 15, "kind": "UInt8" },
+    "searchCategory": { "column": 16, "kind": "UInt8" },
+    "equipLevel": { "column": 40, "kind": "UInt8" },
+    "rarity": { "column": 12, "kind": "UInt8" },
+    "stackSize": { "column": 20, "kind": "UInt32" },
+    "unique": { "column": 21, "kind": "PackedBool(0)" },
+    "untradable": { "column": 22, "kind": "PackedBool(1)" },
+    "hq": { "column": 27, "kind": "PackedBool(4)" }
+  }
+}

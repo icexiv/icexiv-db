@@ -66,7 +66,6 @@ fn catalog(source: Path) -> BlockContent {
     let count = data_expect<Int>(data_require<Int>(page, "count"));
     let version = data_expect<String>(data_require<String>(page, "version"));
     let page_size = data_expect<Int>(data_require<Int>(page, "pageSize"));
-    let source_url = data_expect<String>(data_require<String>(page, "sourceUrl"));
     let label = data_expect<String>(data_require<String>(page, "label"));
     let previous_path = data_expect<String>(data_require<String>(page, "previous"));
     let next_path = data_expect<String>(data_require<String>(page, "next"));
@@ -106,7 +105,7 @@ fn catalog(source: Path) -> BlockContent {
 
         #paragraph()[#text(text: "国服客户端中有名称的 Item 条目，不限于可交易物品。条目存在不代表当前仍可获得。")]
 
-        @(class: "source-note")#paragraph()[#strong[#text(text: count_label)] #text(text: " ") #text(text: version_label) #text(text: " ") #link(target: source_url)[#text(text: "原始 CSV")]]
+        @(class: "source-note")#paragraph()[#strong[#text(text: count_label)] #text(text: " ") #text(text: version_label) #text(text: " · 游戏安装数据")]
 
         @(id: "catalog")#node<BlockContent>[
             @(id: "catalog-status")#paragraph()[#text(text: status_label)]

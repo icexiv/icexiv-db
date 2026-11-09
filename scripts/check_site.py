@@ -6,6 +6,8 @@ from pathlib import Path
 import sys
 from urllib.parse import unquote, urlsplit
 
+from items import prepared_catalog
+
 ROOT = Path(__file__).resolve().parent.parent
 
 
@@ -21,8 +23,8 @@ class Links(HTMLParser):
 
 
 def main():
-    output = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "dist/icexiv-db"
-    catalog = json.loads((ROOT / "data/catalog.json").read_text())
+    output = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "notist-output/icexiv-db"
+    _, catalog = prepared_catalog(ROOT / "inputs/game-export")
     index = json.loads((output / catalog["assetPath"] / "index.json").read_text())
     assert len(index) == catalog["count"]
     expected = {f"{item[0]}.html" for item in index}

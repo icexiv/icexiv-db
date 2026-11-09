@@ -42,54 +42,49 @@
           };
           craneLib = (crane.mkLib pkgs).overrideToolchain toolchain;
           notistPackage = notist.packages.${system}.default;
-          itemSource = builtins.fromJSON (builtins.readFile ./sources/item.json);
-          itemCsv = pkgs.fetchurl {
-            url = "https://raw.githubusercontent.com/${itemSource.repository}/${itemSource.commit}/${itemSource.path}";
-            sha256 = itemSource.sha256;
-          };
-          site = pkgs.stdenvNoCC.mkDerivation {
-            pname = "icexiv-db";
-            version = "0.1.0";
-            src = pkgs.lib.fileset.toSource {
-              root = ./.;
-              fileset = pkgs.lib.fileset.unions [
-                ./Notist.toml
-                ./content
-                ./templates
-                ./static
-                ./modules
-                ./scripts
-                ./sources
+          mkSite =
+            { gameExport }:
+            pkgs.stdenvNoCC.mkDerivation {
+              pname = "icexiv-db";
+              version = "0.1.0";
+              src = pkgs.lib.fileset.toSource {
+                root = ./.;
+                fileset = pkgs.lib.fileset.unions [
+                  ./Notist.toml
+                  ./content
+                  ./templates
+                  ./static
+                  ./modules
+                  ./scripts
+                  ./sources
+                ];
+              };
+              nativeBuildInputs = [
+                notistPackage
+                pkgs.python3
               ];
+              buildPhase = ''
+                runHook preBuild
+                mkdir -p inputs
+                cp -r ${gameExport} inputs/game-export
+                python3 scripts/items.py prepare
+                notist build
+                python3 scripts/check_site.py notist-output/icexiv-db
+                runHook postBuild
+              '';
+              installPhase = ''
+                runHook preInstall
+                mkdir -p "$out"
+                cp -r notist-output/icexiv-db/. "$out/"
+                runHook postInstall
+              '';
             };
-            nativeBuildInputs = [
-              notistPackage
-              pkgs.python3
-            ];
-            buildPhase = ''
-              runHook preBuild
-              python3 scripts/items.py prepare --input ${itemCsv}
-              mkdir -p inputs
-              cp ${itemCsv} inputs/Item.csv
-              notist build
-              python3 scripts/check_site.py dist/icexiv-db
-              runHook postBuild
-            '';
-            installPhase = ''
-              runHook preInstall
-              mkdir -p "$out"
-              cp -r dist/icexiv-db/. "$out/"
-              runHook postInstall
-            '';
-          };
         in
         {
           packages = {
-            default = site;
-            icexiv-db = site;
             notist = notistPackage;
           };
-          checks.site = site;
+          lib.mkSite = mkSite;
           checks.data =
             pkgs.runCommand "icexiv-db-data-tests"
               {
@@ -102,6 +97,7 @@
                   fileset = pkgs.lib.fileset.unions [
                     ./scripts
                     ./tests
+                    ./static/catalog.js
                   ];
                 };
               }

@@ -1,7 +1,8 @@
 /.direnv/
 /dist/
+/notist-output/
 /target/
-/tools/icon-export/target
+/tools/game-export/target
 /result
 /result-*
 .env
