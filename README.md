@@ -9,22 +9,31 @@
    提取字段与文本，按 Icon ID 去重解码 TEX 并编码透明 PNG。
 2. **数据准备**：`scripts/items.py prepare` 校验导出清单、schema、JSON 与图片哈希，
    生成 `content/.data/` 分片与准备凭据，以及 `static/generated/` 搜索索引及图标。
-3. **静态生成**：Notist 的命令扩展调用 `scripts/items.py extension`，在内存中生成物品与目录
-   `.not` 页面；`modules/views.notc` 读取分片生成正文。扩展在同一进程内保存目录元数据，
+3. **静态生成**：Notist 启动 `scripts/items.py extension`。`before_compile` 在内存中生成物品与目录的
+   `.md` 文档，调用 `modules/views.not` 读取分片生成正文，并把手册章节加入文档集合。扩展在同一进程内保存目录元数据，
    在 `before_template` 注入 `site.data.catalog`，Tera 模板生成页面外壳。
 4. **浏览与搜索**：普通分页和详情不依赖 JavaScript；`static/catalog.js` 加载搜索索引，
    按名称或 ID 过滤并渲染分页结果。图片 URL 与静态目录一致。
 
-收录规则为 ID 非零且名称非空，不限可交易物品；每页 100 件。物品详情路径为
-`items/{id}.html`。条目存在不代表游戏内可获得；分类展示原始 ID，获取途径未收录。
+首页和物品目录共用检索器，支持全部、装备、素材和解锁视图。收录规则为 ID 非零且名称非空，
+不限可交易物品；每页 100 件。物品详情路径为 `items/{id}.html`。条目存在不代表游戏内可获得。
+中文类型与浏览分组见[物品分类](docs/item-categories.md)。
+
+装备检索额外使用 `sources/equipment.json`：物品品级、部位和职业来自国服 CSV 对照，
+仅当 `items.json` 的 SHA-256 完全匹配时才载入；其他导出仍支持基本分类和装备等级检索。
+更新时将同一批次的 `Item.csv`、`ClassJob.csv`、`ClassJobCategory.csv` 和
+`EquipSlotCategory.csv` 放在同一目录，运行 `python3 scripts/equipment_snapshot.py CSV目录 inputs/game-export/items.json`，
+再执行 `prepare`。普通构建不读取 CSV，也不联网。
 
 字段映射绑定 `sources/item-schema.json` 中的客户端版本和 Item EXH SHA-256。
 版本、结构或类型不匹配时导出失败，不猜测字段。没有配置或确认缺失的图标使用问号占位；
 访问、解码或写入失败记录为错误，数据准备拒绝这类导出。
 
-完整职责、产物与校验约定见 [数据链路](docs/data-pipeline.md)。
+开发笔记：[游戏数据的判定口径](docs/game-data-rules.md)，涵盖时装、首次收录版本、解锁分类、部位与职业分组，以及这些信息能说明什么。
 
 ## 开发与构建
+
+生成首次收录版本快照：`python3 scripts/release_snapshot.py 国服历史仓库路径 Garland的patches.json inputs/game-export/items.json`。构建和查询不需要联网。
 
 需要 Nix Flakes。开发布局为相邻的 `icexiv-db/` 和 `icexiv-data/`，Rust 导出工具通过
 Cargo path 依赖使用后者。开发环境提供 Rust、Notist、Python 3 和 Node.js。

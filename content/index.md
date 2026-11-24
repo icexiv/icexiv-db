@@ -1,14 +1,3 @@
-@!(title: "IceXIV DB", description: "基于 Notist 的数据驱动 FF14 Wiki。")
-# IceXIV DB
-
-基于 Notist 的数据驱动 FF14 Wiki。
-
-## 项目起点
-
-这里将提供实体数据、关联查询和专题速查。
-
-当前提供物品目录预览，逐步接入游戏数据。
-
-## 物品目录预览
-
-[浏览物品目录](items/index.md)：基于固定版本的国服 Item.csv 展示有名称的物品，支持名称与 ID 搜索、分页和基本资料查询。当前预览尚未接入获取途径和图标图片。
+@!(title: "物品图鉴", description: "浏览最终幻想 XIV 国服物品，按类型、职业和部位检索装备与素材。")
+#import "../modules/views.not" as views;
+#views.catalog(".data/catalog/page-1.json")

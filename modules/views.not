@@ -15,17 +15,26 @@ fn item(source: String, index: Int) -> Block {
     let icon = record.at(11).as_string("");
     let icon_url = record.at(12).as_string("");
     let description_label = if description == "" { "暂无描述。" } else { description };
-    let subhead = "物品 #" + id + " · 固定版本数据";
+    let kind = record.at(13).as_string("");
+    let ilvl = record.at(14).as_string("");
+    let subhead = kind + " · No. " + id;
     let back = para(link("/items/index.html", text("← 物品目录"))).with_attr("class", "back-link");
     let icon_p = para(image(icon_url, "")).with_attr("class", "item-icon item-icon-detail");
     let desc_p = para(text(description_label))
         .with_attr("id", "item-description")
         .with_attr("class", "description");
+    let identity = para(strong(text("物品 ID")) + text(" ") + text(id));
+    let equipment = if ilvl == "" { identity } else {
+        identity + para(strong(text("物品品级")) + text(" ") + text(ilvl))
+        + para(strong(text("装备等级")) + text(" ") + text(equip_level))
+        + para(strong(text("装备部位")) + text(" ") + text(record.at(15).as_string("")))
+        + para(strong(text("适用职业")) + text(" ") + text(record.at(16).as_string("")))
+    };
     let fields = div(
-        para(strong(text("物品 ID")) + text(" ") + text(id))
+        equipment
+        + para(strong(text("首次收录版本")) + text(" ") + text(record.at(17).as_string("")))
         + para(strong(text("分类 ID")) + text(" ") + text(category))
         + para(strong(text("搜索分类 ID")) + text(" ") + text(search_category))
-        + para(strong(text("装备等级")) + text(" ") + text(equip_level))
         + para(strong(text("稀有度")) + text(" ") + text(rarity))
         + para(strong(text("堆叠上限")) + text(" ") + text(stack_size))
         + para(strong(text("独占")) + text(" ") + text(unique))
@@ -84,8 +93,8 @@ fn catalog(source: String) -> Block {
     let count_label = count.to_string() + " 件物品";
     let version_label = "客户端 " + version;
     let page_label = " " + label + " ";
-    let status_label = "每页 " + page_size.to_string() + " 件条目。所有条目和详情均为静态页面；启用 JavaScript 可搜索。";
-    let tbl = table((text("ID"), text("物品名称"), text("分类 ID")), rows);
+    let status_label = "每页 " + page_size.to_string() + " 件 · " + label;
+    let tbl = table((text("编号"), text("物品名称"), text("类型")), rows);
     let table_wrap = div(tbl).with_attr("class", "table-scroll");
     let pagination = para(previous + text(page_label) + next)
         .with_attr("class", "pagination")
@@ -96,9 +105,8 @@ fn catalog(source: String) -> Block {
         + pagination
     )
     .with_attr("id", "catalog");
-    heading(1, text("物品目录"))
-        + para(text("国服客户端中有名称的 Item 条目，不限于可交易物品。条目存在不代表当前仍可获得。"))
-        + para(strong(text(count_label)) + text(" ") + text(version_label) + text(" · 游戏安装数据")).with_attr("class", "source-note")
+    heading(1, text("物品图鉴"))
+        + para(text("艾欧泽亚的装备、素材与道具")).with_attr("class", "intro")
+        + para(text("国服收录 · " + count_label)).with_attr("class", "source-note")
         + catalog_box
-        + para(text("分类展示原始 ID。问号表示没有配置或未提供图标资源；获取途径未收录。")).with_attr("class", "muted")
 }

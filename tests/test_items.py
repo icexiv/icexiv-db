@@ -220,6 +220,7 @@ class ItemTests(unittest.TestCase):
             (root / "scripts").mkdir()
             script = root / "scripts/items.py"
             script.write_bytes((repository / "scripts/items.py").read_bytes())
+            (root / "scripts/categories.json").write_bytes((repository / "scripts/categories.json").read_bytes())
             with patch.object(items, "ROOT", root):
                 bundle, _ = export_fixture(root)
                 items.prepare(bundle)

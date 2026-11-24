@@ -51,7 +51,7 @@ def main():
     assert not failures, "Broken local links:\n" + "\n".join(failures[:20])
     sample = (output / "items/1.html").read_text()
     assert "金币" in sample and "艾欧泽亚" in sample
-    assert '<script type="module"' not in sample, "Item details must not require JavaScript"
+    assert 'id="item-fields"' in sample and "首次收录版本" in sample, "Item details must render without JavaScript"
     print(f"Verified {len(index)} static item pages, {expected_pages} catalog pages and all local HTML links")
 
 

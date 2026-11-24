@@ -52,6 +52,8 @@
                 fileset = pkgs.lib.fileset.unions [
                   ./Notist.toml
                   ./content
+                  ./docs/game-data-rules.md
+                  ./docs/item-categories.md
                   ./templates
                   ./static
                   ./modules

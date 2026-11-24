@@ -10,4 +10,4 @@ static_dir = "static"
 
 [site.extensions.items]
 command = ["python3", "scripts/items.py", "extension"]
-watch = ["scripts", "sources", "inputs/game-export/manifest.json", "inputs/game-export/items.json", "content/.data/prepared.json"]
+watch = ["scripts", "sources", "docs/game-data-rules.md", "docs/item-categories.md", "inputs/game-export/manifest.json", "inputs/game-export/items.json", "content/.data/prepared.json"]

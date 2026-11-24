@@ -13,6 +13,11 @@ ITEM_CHUNK = 1000
 PLACEHOLDER = "/icon-placeholder.svg"
 NUMBERS = ["id", "icon", "category", "searchCategory", "equipLevel", "rarity", "stackSize"]
 BOOLEANS = ["unique", "untradable", "hq"]
+CATEGORIES = json.loads(Path(__file__).with_name("categories.json").read_text())
+
+
+def category_name(item):
+    return CATEGORIES.get(str(item["category"]), [f"类型 #{item['category']}"])[0]
 
 
 def write_json(path, value):
@@ -114,31 +119,39 @@ def catalog_pages(items, source):
         "previous": ("/items/index.html" if page == 2 else
                      f"/items/page/{page - 1}.html" if page > 2 else ""),
         "next": f"/items/page/{page + 1}.html" if page < page_count else "",
-        "items": [[str(item["id"]), item["name"], str(item["category"]), item.get("iconUrl", PLACEHOLDER)]
+        "items": [[str(item["id"]), item["name"], category_name(item), item.get("iconUrl", PLACEHOLDER)]
                   for item in items[(page - 1) * PAGE_SIZE:page * PAGE_SIZE]],
     } for page in range(1, page_count + 1)]
 
 
 def catalog_metadata(export, digest, count):
+    equipment = ROOT / "sources/equipment.json"
+    releases = ROOT / "sources/releases.json"
+    unlocks = ROOT / "sources/unlocks.json"
+    assets_digest = sha256(b"item-facets\0" + digest.encode() + json.dumps(CATEGORIES).encode()
+                           + (releases.read_bytes() if releases.exists() else b"")
+                           + (unlocks.read_bytes() if unlocks.exists() else b"")
+                           + (equipment.read_bytes() if equipment.exists() else b""))
     return {
         "source": export["source"], "exportSha256": digest, "count": count,
         "pageSize": PAGE_SIZE, "pageCount": max(1, (count + PAGE_SIZE - 1) // PAGE_SIZE),
-        "assetPath": f"generated/{digest[:16]}",
+        "assetPath": f"generated/{assets_digest[:16]}",
     }
 
 
 def prepared_catalog(input_path):
     export, records, _, digest = load_export(input_path, verify_icons=False)
     receipt = ROOT / "content/.data/prepared.json"
-    if not receipt.is_file() or json.loads(receipt.read_text(encoding="utf-8")) != {"exportSha256": digest}:
+    catalog = catalog_metadata(export, digest, len(records))
+    if not receipt.is_file() or json.loads(receipt.read_text(encoding="utf-8")) != {"assetPath": catalog["assetPath"]}:
         raise ValueError("Run scripts/items.py prepare before building the site")
-    return records, catalog_metadata(export, digest, len(records))
+    return records, catalog
 
 
 def prepare(input_path):
     export, records, icons, digest = load_export(input_path)
     (ROOT / "content/.data/prepared.json").unlink(missing_ok=True)
-    asset_path = f"generated/{digest[:16]}"
+    asset_path = catalog_metadata(export, digest, len(records))["assetPath"]
     for item in records:
         item["iconUrl"] = (f"/{asset_path}/icons/{item['icon']}.png" if item["icon"] in icons else PLACEHOLDER)
     # These two namespaces belong exclusively to this preparation script.
@@ -150,16 +163,40 @@ def prepare(input_path):
         (assets / "icons").mkdir(parents=True, exist_ok=True)
         for icon_id, png in icons.items():
             (assets / "icons" / f"{icon_id}.png").write_bytes(png)
-    write_json(assets / "index.json", [[i["id"], i["name"], i["category"], i["iconUrl"]] for i in records])
+    snapshot_path = ROOT / "sources/equipment.json"
+    snapshot = json.loads(snapshot_path.read_text()) if snapshot_path.exists() else {}
+    if snapshot.get("itemsSha256") != export["itemsSha256"]:
+        snapshot = {}
+    gear = {i: [level, slot, job] for first, last, level, slot, job in snapshot.get("ranges", [])
+            for i in range(first, last + 1)}
+    path = ROOT / "sources/releases.json"
+    releases = json.loads(path.read_text()) if path.exists() else {}
+    if releases.get("itemsSha256") != export["itemsSha256"]:
+        releases = {}
+    versions = {i: releases["labels"][label] for first, last, label in releases.get("ranges", [])
+                for i in range(first, last + 1)}
+    path = ROOT / "sources/unlocks.json"
+    unlocks = json.loads(path.read_text()) if path.exists() else {}
+    groups = unlocks["groups"] if unlocks.get("itemsSha256") == export["itemsSha256"] else {}
+    write_json(assets / "filters.json", {"categories": CATEGORIES, "unlocks": groups, "slots": snapshot.get("slots", {}),
+                                         "jobs": snapshot.get("members", {})})
+    write_json(assets / "index.json", [[i["id"], i["name"], i["category"], i["iconUrl"], i["equipLevel"],
+                                        *gear.get(i["id"], [None]*3), versions.get(i["id"], "未归档")] for i in records])
     pages = catalog_pages(records, export["source"])
     private = ROOT / "content/.data"
     shutil.rmtree(private, ignore_errors=True)
     for chunk, start in enumerate(range(0, len(records), ITEM_CHUNK)):
-        write_json(private / "items" / f"{chunk}.json", [item_record(item) for item in records[start:start + ITEM_CHUNK]])
+        details = []
+        for item in records[start:start + ITEM_CHUNK]:
+            extra = gear.get(item["id"])
+            details.append(item_record(item) + [category_name(item)] + ([
+                str(extra[0]), "、".join(snapshot["slots"][str(extra[1])]),
+                snapshot["jobLabels"][str(extra[2])]] if extra else ["", "", ""]) + [versions.get(item["id"], "未归档")])
+        write_json(private / "items" / f"{chunk}.json", details)
     for page, record in enumerate(pages, 1):
         write_json(private / "catalog" / f"page-{page}.json", record)
     # Publish the receipt last: incomplete preparation must not be used by a build.
-    write_json(private / "prepared.json", {"exportSha256": digest})
+    write_json(private / "prepared.json", {"assetPath": asset_path})
     print(f"Prepared {len(records)} item records and {len(pages)} catalog pages")
 
 
@@ -181,6 +218,12 @@ def extend(request, input_path, limit=None, *, state=None):
     if limit is not None:
         records = records[:limit]
     documents = dict(request["documents"])
+    if "docs/index.md" in documents:
+        for name in ("game-data-rules", "item-categories"):
+            path = f"docs/{name}.md"
+            if path in documents:
+                raise ValueError(f"Handbook chapter conflicts with handwritten content: {path}")
+            documents[path] = (ROOT / path).read_text(encoding="utf-8")
 
     def add_document(path, call):
         if path in documents:

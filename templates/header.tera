@@ -1,5 +1,14 @@
 <header class="site-header">
-  <a class="brand" href="{{url(path='index.html')}}">IceXIV <span>DB</span></a>
-  <nav aria-label="主导航"><a href="{{url(path='items/index.html')}}">物品目录</a></nav>
-  <span class="preview-label">数据预览</span>
+  <a class="brand" href="{{url(path='index.html')}}"><svg viewBox="0 0 32 40" width="28" height="36" aria-hidden="true"><path fill="currentColor" d="m18 1 11 13-12 25L3 24z"/><path fill="none" stroke="var(--rail)" stroke-width="1.4" d="m18 1-5 19 4 19m-4-19 16-6M3 24l10-4"/></svg> IceXIV <small>DB</small></a>
+  {% if book %}
+  <nav class="book-nav" aria-label="手册目录"><p>手册目录</p>
+    <a href="index.html"{% if page.route.path == 'docs/index.md' %} aria-current="page"{% endif %}>手册首页</a>
+    <a href="game-data-rules.html"{% if page.route.path == 'docs/game-data-rules.md' %} aria-current="page"{% endif %}>01 · 数据判定口径</a>
+    <a href="item-categories.html"{% if page.route.path == 'docs/item-categories.md' %} aria-current="page"{% endif %}>02 · 物品分类清单</a>
+  </nav>{% else %}
+  <nav aria-label="资料导航"><p>资料导航</p><a href="{{url(path='items/index.html')}}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m3 7 9-5 9 5v10l-9 5-9-5zm0 0 9 5 9-5m-9 5v10"/></svg>物品</a></nav>
+  {% endif %}
+  <div class="edition"><span>最终幻想 XIV<br><small>国服资料库</small></span>
+    <a class="book-entry" href="{{url(path='docs/index.html')}}" aria-label="开发手册" title="开发手册"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 6C9 4 6 4 2 5v14c4-1 7-1 10 1 3-2 6-2 10-1V5c-4-1-7-1-10 1Zm0 0v14"/></svg></a>
+  </div>
 </header>
