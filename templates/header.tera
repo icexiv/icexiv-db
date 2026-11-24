@@ -1,5 +1,5 @@
 <header class="site-header">
-  <a class="brand" href="{{url(path='index.html')}}"><svg viewBox="0 0 32 40" width="28" height="36" aria-hidden="true"><path fill="currentColor" d="m18 1 11 13-12 25L3 24z"/><path fill="none" stroke="var(--rail)" stroke-width="1.4" d="m18 1-5 19 4 19m-4-19 16-6M3 24l10-4"/></svg> IceXIV <small>DB</small></a>
+  <a class="brand" href="{{url(path='index.html')}}"><img src="{{url(path='logo.png')}}" width="40" height="40" alt=""> IceXIV <small>DB</small></a>
   {% if book %}
   <nav class="book-nav" aria-label="手册目录"><p>手册目录</p>
     <a href="index.html"{% if page.route.path == 'docs/index.md' %} aria-current="page"{% endif %}>手册首页</a>

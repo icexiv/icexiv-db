@@ -1,5 +1,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/x-icon" href="{{url(path='favicon.ico')}}">
+<link rel="icon" type="image/png" sizes="32x32" href="{{url(path='favicon.png')}}">
+<link rel="apple-touch-icon" sizes="180x180" href="{{url(path='apple-touch-icon.png')}}">
 <title>{{page.title}} · {{site.title}}</title>
 {% if page.attrs.description %}<meta name="description" content="{{page.attrs.description}}">{% endif %}
 <link rel="stylesheet" href="{{url(path='site.css')}}">

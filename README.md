@@ -1,7 +1,18 @@
+<p align="center">
+  <img src="static/logo.png" width="160" height="160" alt="IceXIV DB：艾欧泽亚百科全书与 IceXIV 冰方块" />
+</p>
+
 # icexiv-db
 
 基于 Notist 的 FF14 静态资料站，属于 IceXIV 网站组。
 物品记录与图标均从同一份国服游戏安装读取，浏览器消费 HTML、PNG 和精简搜索索引。
+
+## 项目标识
+
+Logo 取自游戏内家具《艾欧泽亚百科全书》，以正面书脊与两端书挡为主体，左上后方露出部分 IceXIV 冰方块，使用透明背景。
+原图位于 `assets/logo.png`；`static/logo.png` 是 512px 展示版，导航栏与本 README 共用。
+`static/favicon.png` 为 32px 浏览器图标，`favicon.ico` 包含 16 / 32 / 48px，`apple-touch-icon.png` 为 180px。
+页面通过 Notist 的 `url()` 引用资源，Pages 打包时与其他站内链接一起转换为相对路径。
 
 ## 数据与页面链路
 
