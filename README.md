@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="static/logo.png" width="160" height="160" alt="IceXIV DB：艾欧泽亚百科全书与 IceXIV 冰方块" />
+  <img src="static/logo.png" width="160" height="160" alt="IceXIV DB：所思大书院与 IceXIV 冰方块" />
 </p>
 
 # icexiv-db
@@ -9,7 +9,7 @@
 
 ## 项目标识
 
-Logo 取自游戏内家具《艾欧泽亚百科全书》，以正面书脊与两端书挡为主体，左上后方露出部分 IceXIV 冰方块，使用透明背景。
+Logo 取自旧萨雷安的所思大书院，以层叠三角山墙、浅色石墙与蓝绿窗纹为主体，左上后方露出部分 IceXIV 冰方块，使用透明背景。
 原图位于 `assets/logo.png`；`static/logo.png` 是 512px 展示版，导航栏与本 README 共用。
 `static/favicon.png` 为 32px 浏览器图标，`favicon.ico` 包含 16 / 32 / 48px，`apple-touch-icon.png` 为 180px。
 页面通过 Notist 的 `url()` 引用资源，Pages 打包时与其他站内链接一起转换为相对路径。
