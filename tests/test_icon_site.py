@@ -21,7 +21,7 @@ class IconSiteTests(unittest.TestCase):
                                 ignore=shutil.ignore_patterns("generated", "__pycache__"))
             shutil.copy(repository / "Notist.toml", root)
             (root / "content").mkdir()
-            (root / "content/index.not").write_text("= Test\n")
+            (root / "content/index.md").write_text("# Test\n")
             bundle, _ = export_fixture(root, [item_fixture(i, icon=12 if i % 2 else 0) for i in range(1, 102)])
             with patch.object(items, "ROOT", root):
                 items.prepare(bundle)

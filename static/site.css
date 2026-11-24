@@ -43,7 +43,7 @@ th { font-size: .85rem; color: var(--muted); font-weight: 600; background: var(-
 tr:last-child td { border-bottom: 0; }
 td a { text-decoration: none; }
 td a:hover { text-decoration: underline; }
-.numeric { font-variant-numeric: tabular-nums; color: var(--muted); width: 8rem; }
+.numeric, #catalog td:nth-child(1), #catalog td:nth-child(3) { font-variant-numeric: tabular-nums; color: var(--muted); width: 8rem; }
 .pagination { display: flex; justify-content: center; align-items: center; gap: 1rem; margin: 1.5rem 0; max-width: none; }
 #page-status { font-size: .9rem; }
 .back-link { font-size: .9rem; }
@@ -64,5 +64,5 @@ footer p { margin: .3rem 0; }
   .site-header { gap: 1rem; }
   h1 { font-size: 1.65rem; }
   th, td { padding: .6rem; }
-  .numeric { width: auto; white-space: nowrap; }
+  .numeric, #catalog td:nth-child(1), #catalog td:nth-child(3) { width: auto; white-space: nowrap; }
 }

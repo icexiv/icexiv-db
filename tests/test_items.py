@@ -126,13 +126,13 @@ class ItemTests(unittest.TestCase):
             self.assertEqual(records[0][12], index[0][3])
             self.assertEqual(pages["items"][0][3], index[0][3])
             request = {"version": 2, "event": "before_compile",
-                       "documents": {"index.not": "= Home"}}
+                       "documents": {"index.md": "# Home"}}
             state = {}
             response = items.extend(copy.deepcopy(request), path, state=state)
             documents = response["documents"]
             self.assertEqual(len(documents), 104)
-            self.assertIn('#views.item(p"../.data/items/0.json", 100)', documents["items/101.not"])
-            self.assertIn('#views.catalog(p"../../.data/catalog/page-2.json")', documents["items/page/2.not"])
+            self.assertIn('#views.item("../.data/items/0.json", 100)', documents["items/101.md"])
+            self.assertIn('#views.catalog("../../.data/catalog/page-2.json")', documents["items/page/2.md"])
             self.assertNotIn("data", response)
             template = {"version": 2, "event": "before_template", "pages": [],
                          "data": {"catalog": {"stale": True}, "other": True}}
@@ -140,7 +140,7 @@ class ItemTests(unittest.TestCase):
                 "version": 2, "event": "before_template", "data": {"catalog": catalog, "other": True}})
             self.assertTrue(template["data"]["other"])
             self.assertEqual(template["data"]["catalog"], {"stale": True})
-            request["documents"]["items/1.not"] = "= handwritten"
+            request["documents"]["items/1.md"] = "# handwritten"
             with self.assertRaisesRegex(ValueError, "conflicts"):
                 items.extend(request, path)
             items.write_json(root / "content/.data/prepared.json", {"exportSha256": "bad"})
@@ -162,9 +162,9 @@ class ItemTests(unittest.TestCase):
             template = {"version": 2, "event": "before_template", "data": {"other": True}}
             with self.assertRaisesRegex(ValueError, "before_compile"):
                 items.extend(template, path, state=state)
-            compile_request = {"version": 2, "event": "before_compile", "documents": {"index.not": "= Home"}}
+            compile_request = {"version": 2, "event": "before_compile", "documents": {"index.md": "# Home"}}
             items.extend(compile_request, path, state=state)
-            self.assertEqual(compile_request["documents"], {"index.not": "= Home"})
+            self.assertEqual(compile_request["documents"], {"index.md": "# Home"})
             # The second event uses the validated build snapshot, not another disk read.
             (path / "manifest.json").unlink()
             response = items.extend(template, path, state=state)
@@ -199,7 +199,7 @@ class ItemTests(unittest.TestCase):
 
     def test_protocol_preserves_unicode_and_reports_errors(self):
         output = io.StringIO()
-        response = {"version": 2, "event": "before_compile", "documents": {"test.not": "= <物品>\n"}}
+        response = {"version": 2, "event": "before_compile", "documents": {"test.md": "# <物品>\n"}}
         items.write_response(response, output)
         self.assertEqual(json.loads(output.getvalue()), response)
         self.assertIn("物品", output.getvalue())
@@ -230,7 +230,7 @@ class ItemTests(unittest.TestCase):
                     with selectors.DefaultSelector() as selector:
                         selector.register(process.stdout, selectors.EVENT_READ)
                         for request in [
-                            {"version": 2, "event": "before_compile", "documents": {"index.not": "= 物品"}},
+                            {"version": 2, "event": "before_compile", "documents": {"index.md": "# 物品"}},
                             {"version": 2, "event": "before_template", "pages": [], "data": {"other": True}},
                         ]:
                             process.stdin.write(json.dumps(request) + "\n")
@@ -243,8 +243,8 @@ class ItemTests(unittest.TestCase):
                             self.assertEqual(response["event"], request["event"])
                             self.assertNotIn("errors", response)
                             if request["event"] == "before_compile":
-                                self.assertIn("items/1.not", response["documents"])
-                                self.assertEqual(response["documents"]["index.not"], "= 物品")
+                                self.assertIn("items/1.md", response["documents"])
+                                self.assertEqual(response["documents"]["index.md"], "# 物品")
                                 self.assertNotIn("data", response)
                             else:
                                 self.assertTrue(response["data"]["other"])

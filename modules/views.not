@@ -1,0 +1,104 @@
+fn item(source: String, index: Int) -> Block {
+    let records = read_json(source);
+    let record = records.at(index);
+    let id = record.at(0).as_string("");
+    let name = record.at(1).as_string("");
+    let description = record.at(2).as_string("");
+    let category = record.at(3).as_string("");
+    let search_category = record.at(4).as_string("");
+    let equip_level = record.at(5).as_string("");
+    let rarity = record.at(6).as_string("");
+    let stack_size = record.at(7).as_string("");
+    let unique = record.at(8).as_string("");
+    let untradable = record.at(9).as_string("");
+    let hq = record.at(10).as_string("");
+    let icon = record.at(11).as_string("");
+    let icon_url = record.at(12).as_string("");
+    let description_label = if description == "" { "暂无描述。" } else { description };
+    let subhead = "物品 #" + id + " · 固定版本数据";
+    let back = para(link("/items/index.html", text("← 物品目录"))).with_attr("class", "back-link");
+    let icon_p = para(image(icon_url, "")).with_attr("class", "item-icon item-icon-detail");
+    let desc_p = para(text(description_label))
+        .with_attr("id", "item-description")
+        .with_attr("class", "description");
+    let fields = div(
+        para(strong(text("物品 ID")) + text(" ") + text(id))
+        + para(strong(text("分类 ID")) + text(" ") + text(category))
+        + para(strong(text("搜索分类 ID")) + text(" ") + text(search_category))
+        + para(strong(text("装备等级")) + text(" ") + text(equip_level))
+        + para(strong(text("稀有度")) + text(" ") + text(rarity))
+        + para(strong(text("堆叠上限")) + text(" ") + text(stack_size))
+        + para(strong(text("独占")) + text(" ") + text(unique))
+        + para(strong(text("不可交易")) + text(" ") + text(untradable))
+        + para(strong(text("可 HQ")) + text(" ") + text(hq))
+        + para(strong(text("图标 ID")) + text(" ") + text(icon))
+    )
+    .with_attr("id", "item-fields")
+    .with_attr("class", "item-fields");
+    let notice = section(
+        heading(2, text("获取途径"))
+        + para(text("此版本只接入 Item 表，尚未收录来源。不能据此判断物品不可获得。"))
+    )
+    .with_attr("class", "notice");
+    let detail_content = div(desc_p + fields + notice).with_attr("id", "detail-content");
+    let item_detail = section(
+        icon_p
+        + heading(1, text(name))
+        + para(text(subhead)).with_attr("class", "muted")
+        + detail_content
+    )
+    .with_attr("id", "item-detail");
+    back + item_detail
+}
+
+fn catalog(source: String) -> Block {
+    let page = read_json(source);
+    let count = page.get("count").as_int(0);
+    let version = page.get("version").as_string("");
+    let page_size = page.get("pageSize").as_int(0);
+    let label = page.get("label").as_string("");
+    let previous_path = page.get("previous").as_string("");
+    let next_path = page.get("next").as_string("");
+    let records = page.get("items").as_list();
+    let rows = for record in records {
+        let id = record.at(0).as_string("");
+        let name = record.at(1).as_string("");
+        let category = record.at(2).as_string("");
+        let icon_url = record.at(3).as_string("");
+        let target = "/items/" + id + ".html";
+        let name_cell = image(icon_url, "").with_attr("class", "item-icon")
+            + text(" ")
+            + link(target, text(name));
+        (text(id), name_cell, text(category))
+    };
+    let previous = if previous_path == "" {
+        []
+    } else {
+        link(previous_path, text("上一页"))
+    };
+    let next = if next_path == "" {
+        []
+    } else {
+        link(next_path, text("下一页"))
+    };
+    let count_label = count.to_string() + " 件物品";
+    let version_label = "客户端 " + version;
+    let page_label = " " + label + " ";
+    let status_label = "每页 " + page_size.to_string() + " 件条目。所有条目和详情均为静态页面；启用 JavaScript 可搜索。";
+    let tbl = table((text("ID"), text("物品名称"), text("分类 ID")), rows);
+    let table_wrap = div(tbl).with_attr("class", "table-scroll");
+    let pagination = para(previous + text(page_label) + next)
+        .with_attr("class", "pagination")
+        .with_attr("aria-label", "静态物品目录分页");
+    let catalog_box = div(
+        para(text(status_label)).with_attr("id", "catalog-status")
+        + table_wrap
+        + pagination
+    )
+    .with_attr("id", "catalog");
+    heading(1, text("物品目录"))
+        + para(text("国服客户端中有名称的 Item 条目，不限于可交易物品。条目存在不代表当前仍可获得。"))
+        + para(strong(text(count_label)) + text(" ") + text(version_label) + text(" · 游戏安装数据")).with_attr("class", "source-note")
+        + catalog_box
+        + para(text("分类展示原始 ID。问号表示没有配置或未提供图标资源；获取途径未收录。")).with_attr("class", "muted")
+}

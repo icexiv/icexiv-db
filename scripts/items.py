@@ -186,16 +186,16 @@ def extend(request, input_path, limit=None, *, state=None):
         if path in documents:
             raise ValueError(f"Generated page conflicts with handwritten content: {path}")
         prefix = "../" * (path.count("/") + 1)
-        documents[path] = f'#import "{prefix}modules/views.notc" as views;\n{call}\n'
+        documents[path] = f'#import "{prefix}modules/views.not" as views;\n{call}\n'
 
     for position, item in enumerate(records):
-        path = f"items/{item['id']}.not"
+        path = f"items/{item['id']}.md"
         chunk, index = divmod(position, ITEM_CHUNK)
-        add_document(path, f'#views.item(p"{"../" * path.count("/")}.data/items/{chunk}.json", {index})')
+        add_document(path, f'#views.item("{"../" * path.count("/")}.data/items/{chunk}.json", {index})')
     page_count = max(1, (len(records) + PAGE_SIZE - 1) // PAGE_SIZE)
     for page in range(1, page_count + 1):
-        path = "items/index.not" if page == 1 else f"items/page/{page}.not"
-        add_document(path, f'#views.catalog(p"{"../" * path.count("/")}.data/catalog/page-{page}.json")')
+        path = "items/index.md" if page == 1 else f"items/page/{page}.md"
+        add_document(path, f'#views.catalog("{"../" * path.count("/")}.data/catalog/page-{page}.json")')
     if state is not None:
         state["catalog"] = catalog
     return {"version": 2, "event": event, "documents": documents}
