@@ -99,6 +99,7 @@
                   fileset = pkgs.lib.fileset.unions [
                     ./scripts
                     ./tests
+                    ./ops/cn
                     ./static/catalog.js
                   ];
                 };

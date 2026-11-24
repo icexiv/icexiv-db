@@ -1,4 +1,4 @@
-name: Documentation
+name: Database website
 
 on:
   push:
@@ -7,6 +7,10 @@ on:
 
 permissions:
   contents: read
+
+concurrency:
+  group: db-site-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   offline-site:
@@ -20,3 +24,73 @@ jobs:
         run: |
           NOTIST_TEST_BIN="$PWD/result-notist/bin/notist" python3 -m unittest discover -s tests -v
           node --test tests/catalog.test.cjs
+
+      - name: Fetch pinned production export
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download export-2026.10.06 --pattern game-export.tar.gz
+          sha256sum -c sources/game-export.sha256
+          mkdir -p inputs
+          tar -xzf game-export.tar.gz -C inputs
+
+      - name: Build and verify both distributions
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        run: |
+          python3 scripts/items.py prepare
+          result-notist/bin/notist build -j 2
+          python3 scripts/package_site.py notist-output/icexiv-db dist/pages dist/domestic
+          python3 scripts/check_site.py dist/pages
+          python3 scripts/check_site.py dist/domestic
+          tar -czf domestic.tar.gz -C dist/domestic .
+
+      - uses: actions/upload-pages-artifact@v3
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        with:
+          path: dist/pages
+
+      - uses: actions/upload-artifact@v4
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        with:
+          name: domestic-site
+          path: domestic.tar.gz
+          retention-days: 7
+
+  pages:
+    needs: offline-site
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@v5
+      - id: deploy
+        uses: actions/deploy-pages@v4
+
+  server:
+    needs: offline-site
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    env:
+      DEPLOY_HOST: ${{ vars.DEPLOY_HOST || 'deploy@82.156.196.54' }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: domestic-site
+      - name: Deploy to db.icexiv.top
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          umask 077
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          mkdir dist
+          tar -xzf domestic.tar.gz -C dist
+          rsync -rlt --delete-delay --delay-updates --chmod=D755,F644 dist/ "$DEPLOY_HOST:./"

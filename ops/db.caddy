@@ -1,0 +1,85 @@
+(db_medama_collector) {
+    # Join the site's mutually exclusive handle group.
+    handle /_analytics/* {
+        route {
+            @tracker {
+                method GET HEAD
+                path /_analytics/tracker.js
+            }
+            handle @tracker {
+                header Cache-Control "no-cache"
+                file_server
+            }
+
+            @ping {
+                method GET
+                path /_analytics/api/event/ping
+            }
+            handle @ping {
+                rewrite * /api/event/ping
+                reverse_proxy http://100.119.68.25:18181 {
+                    import db_medama_upstream
+                }
+            }
+
+            @hit {
+                method POST
+                path /_analytics/api/event/hit
+                header Origin https://db.icexiv.top
+            }
+            handle @hit {
+                @oversized expression `{http.request.header.Content-Length} != "" && int({http.request.header.Content-Length}) > 8192`
+                respond @oversized 413
+                request_body {
+                    max_size 8KB
+                }
+                rewrite * /api/event/hit
+                reverse_proxy http://100.119.68.25:18181 {
+                    import db_medama_upstream
+                }
+            }
+
+            # Never expose dashboard, admin or unknown collector paths.
+            handle {
+                respond 404
+            }
+        }
+    }
+}
+
+(db_medama_upstream) {
+    # Direct private-IP upstream; the dashboard is never served from this site.
+    header_up X-Forwarded-For {http.request.remote.host}
+    header_up -Forwarded
+    header_up -CF-Connecting-IP
+    header_up -X-Real-IP
+    header_up -X-Client-IP
+    header_up -Fastly-Client-IP
+    header_up -Cookie
+    header_up -Authorization
+    header_up -Referer
+    header_down -Set-Cookie
+    header_down -Access-Control-Allow-Origin
+    transport http {
+        dial_timeout 2s
+        response_header_timeout 3s
+        read_timeout 3s
+        write_timeout 3s
+    }
+}
+
+db.icexiv.top {
+    encode zstd gzip
+    root * /srv/db.icexiv.top/www
+
+    @pages path / *.html
+    header @pages Cache-Control "no-cache"
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+    }
+
+    import db_medama_collector
+
+    file_server
+}

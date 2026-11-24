@@ -119,4 +119,21 @@ nix fmt
 
 `content/.data/` 与 `static/generated/` 由准备脚本独占并重建，不放手写文件。
 导出清单与准备凭据不一致时构建失败，需重新执行 `prepare`。
-`base_url` 为 `/`；生产域名由 `Notist.toml` 配置。
+`Notist.toml` 的 `base_url` 为 `/`；Pages 打包时将站内根路径转为相对路径。
+
+## 发布
+
+`main` 上的 GitHub Actions 从本仓库 Release `export-2026.10.06` 读取
+`game-export.tar.gz`，用 `sources/game-export.sha256` 校验后生成全量站点。
+更新数据时，从 `inputs/` 用 GNU tar 的 `--sort=name --mtime=@0 --owner=0
+--group=0 --numeric-owner` 打包 `game-export/`，通过 `gzip -n -1` 压缩；
+在新标签上传归档，并一起更新工作流里的标签和校验和。PR 使用离线样例。
+
+- **Pages**：`https://icexiv.github.io/icexiv-db/`，站内链接相对当前页面，无备案和统计。
+- **国内站**：`https://db.icexiv.top/`，含 ICP、公安备案和 Medama 访问统计。
+  部署密钥由 `DEPLOY_SSH_KEY` 提供，`DEPLOY_KNOWN_HOSTS` 固定 SSH 主机公钥；
+  服务端用 `restrict,command="/usr/bin/rrsync -wo /srv/db.icexiv.top/www"` 限定部署目录。
+
+DNS 的 `db` A 记录指向国内源站。Caddyfile 顶层导入 `ops/db.caddy`，
+Medama 注册 `db.icexiv.top` 后重启加载。只转发 ping 和同源 hit；
+物品详情与分页按页面类型汇总，不传查询词、URL 参数或外站来源路径，尊重 DNT/GPC。

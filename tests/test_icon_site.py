@@ -8,6 +8,7 @@ import unittest
 from unittest.mock import patch
 
 from test_items import export_fixture, item_fixture, items
+from scripts.package_site import package
 
 
 @unittest.skipUnless(os.environ.get("NOTIST_TEST_BIN"), "Set NOTIST_TEST_BIN to run the offline site fixture")
@@ -46,3 +47,15 @@ class IconSiteTests(unittest.TestCase):
             self.assertIn("客户端 synthetic", (output / "items/1.html").read_text())
             self.assertIn(f'data-index-url="../{catalog["assetPath"]}/index.json"',
                           (output / "items/index.html").read_text())
+            pages, cn = root / "pages", root / "cn"
+            package(output, pages, cn)
+            nested = Path("items/page/2.html")
+            global_html = (pages / nested).read_text()
+            domestic_html = (cn / nested).read_text()
+            self.assertIn('href="../../site.css"', global_html)
+            self.assertNotRegex(global_html, r'(?:href|src|action)="/(?!/)')
+            self.assertNotIn("京ICP备", global_html)
+            self.assertFalse((pages / "_analytics").exists())
+            self.assertIn("京ICP备", domestic_html)
+            self.assertIn('src="/_analytics/tracker.js"', domestic_html)
+            self.assertTrue((cn / "police-beian.png").is_file())
