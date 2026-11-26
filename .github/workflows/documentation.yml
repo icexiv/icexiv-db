@@ -13,13 +13,12 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: db-site-${{ github.ref }}
-  cancel-in-progress: false
-
 jobs:
   offline-site:
     runs-on: ubuntu-latest
+    concurrency:
+      group: db-build-${{ github.ref }}
+      cancel-in-progress: true
     steps:
       - uses: actions/checkout@v4
       - uses: cachix/install-nix-action@v31
@@ -101,6 +100,9 @@ jobs:
     needs: offline-site
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    concurrency:
+      group: db-deploy-pages
+      cancel-in-progress: false
     permissions:
       pages: write
       id-token: write
@@ -116,6 +118,10 @@ jobs:
     needs: offline-site
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: db-deploy-server
+      cancel-in-progress: false
     env:
       DEPLOY_HOST: ${{ vars.DEPLOY_HOST || 'deploy@82.156.196.54' }}
     steps:
@@ -133,4 +139,4 @@ jobs:
           printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
           mkdir dist
           tar -xzf domestic.tar.gz -C dist
-          rsync -rlt --delete-delay --delay-updates --chmod=D755,F644 dist/ "$DEPLOY_HOST:./"
+          rsync -rltzW --compress-level=6 --timeout=120 --delete-delay --delay-updates --chmod=D755,F644 dist/ "$DEPLOY_HOST:./"
