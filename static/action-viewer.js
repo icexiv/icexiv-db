@@ -38,7 +38,7 @@ export function mountActionPreview(host, assets) {
     button.hidden = true;
     status.textContent = '';
     const actors = assets.actionActors || {};
-    const races = [[1, '人族'], [2, '精灵族'], [3, '拉拉肥族'], [4, '猫魅族'],
+    const races = [[1, '人族'], [2, '精灵族'], [3, '拉拉菲尔族'], [4, '猫魅族'],
       [5, '鲁加族'], [6, '敖龙族'], [7, '硌狮族']]
       .filter(([id]) => actors[`${id}-0`] || actors[`${id}-1`]);
     const defaultKey = assets.actionDefault || '6-1';

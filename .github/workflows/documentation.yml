@@ -67,7 +67,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           SDK_TAG: ${{ vars.RENDERER_RELEASE_TAG || 'dev-build' }}
-          SDK_SHA256: ${{ vars.RENDERER_SDK_SHA256 || 'b160969fa70ced38651a36f1fbff28571acf5207c47c281c2e069a095cfc5755' }}
+          SDK_SHA256: ${{ vars.RENDERER_SDK_SHA256 || '80e6151a1696efc0c4607409dcafa0cc43f53ebc12af738f3216beeefe6be4b4' }}
         run: |
           gh release download "$SDK_TAG" --repo icexiv/icexiv-renderer \
             --pattern icexiv-renderer-web.tgz --dir "$RUNNER_TEMP"
