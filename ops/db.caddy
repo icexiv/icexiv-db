@@ -72,7 +72,7 @@ db.icexiv.top {
     encode zstd gzip
     root * /srv/db.icexiv.top/www
 
-    @pages path / *.html *.css *.js
+    @pages path / *.html *.css *.js *.wasm
     header @pages Cache-Control "no-cache"
     header {
         X-Content-Type-Options nosniff
