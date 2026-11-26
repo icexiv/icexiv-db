@@ -138,6 +138,4 @@ jobs:
           umask 077
           printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
           printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
-          mkdir dist
-          tar -xzf domestic.tar.gz -C dist
-          rsync -rltzW --compress-level=6 --timeout=120 --delete-delay --delay-updates --chmod=D755,F644 dist/ "$DEPLOY_HOST:./"
+          ssh -o BatchMode=yes "$DEPLOY_HOST" < domestic.tar.gz

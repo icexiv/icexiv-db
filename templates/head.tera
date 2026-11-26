@@ -5,4 +5,4 @@
 <link rel="apple-touch-icon" sizes="180x180" href="{{url(path='apple-touch-icon.png')}}">
 <title>{{page.title}} · {{site.title}}</title>
 {% if page.attrs.description %}<meta name="description" content="{{page.attrs.description}}">{% endif %}
-<link rel="stylesheet" href="{{url(path='site.css')}}">
+<link rel="stylesheet" href="{{url(path='site.css')}}?v={{site.data.asset_rev}}">

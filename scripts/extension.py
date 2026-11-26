@@ -4,6 +4,7 @@ Reads pure manifest output from ``content/.data/`` and supplies the game-assets
 resolver configuration at ``notist serve`` / ``notist build`` time via ``scripts/media.py``.
 """
 
+import hashlib
 import json
 
 if __package__:
@@ -34,6 +35,19 @@ def _build_runtime_assets(root):
     return bases, site_assets
 
 
+def _asset_rev(root):
+    digest = hashlib.sha256()
+    static = root / "static"
+    if static.is_dir():
+        for path in sorted(static.iterdir()):
+            if path.is_file() and path.suffix in {".css", ".js"}:
+                digest.update(path.name.encode("utf-8"))
+                digest.update(b"\0")
+                digest.update(path.read_bytes())
+                digest.update(b"\0")
+    return digest.hexdigest()[:10]
+
+
 def extend(request, input_path, limit=None, *, state=None, root=ROOT):
     if request.get("version") != 2:
         raise ValueError("Unsupported Notist site extension protocol")
@@ -43,6 +57,7 @@ def extend(request, input_path, limit=None, *, state=None, root=ROOT):
             raise ValueError("before_compile must succeed before before_template")
         data = dict(request["data"])
         data["catalog"] = state["catalog"]
+        data["asset_rev"] = _asset_rev(root)
         if state.get("assets"):
             data["assets"] = state["assets"]
         return {"version": 2, "event": event, "data": data}

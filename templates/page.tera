@@ -18,7 +18,7 @@
     {% if assets.components %}
     <script type="module" src="{{assets.components}}"></script>
     {% endif %}
-    <script type="module" src="{{url(path='lookup.js')}}"></script>
-    <script type="module" src="{{url(path='catalog-return.js')}}"></script>
+    <script type="module" src="{{url(path='lookup.js')}}?v={{site.data.asset_rev}}"></script>
+    <script type="module" src="{{url(path='catalog-return.js')}}?v={{site.data.asset_rev}}"></script>
   </body>
 </html>

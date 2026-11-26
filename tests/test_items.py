@@ -104,7 +104,9 @@ class ItemTests(unittest.TestCase):
             self.assertNotIn("data", response)
             template = {"version": 2, "event": "before_template", "pages": [],
                         "data": {"catalog": {"stale": True}, "other": True}}
-            self.assertEqual(items.extend(template, path, state=state), {
+            tpl_out = items.extend(template, path, state=state)
+            self.assertRegex(tpl_out["data"].pop("asset_rev"), r"^[a-f0-9]{10}$")
+            self.assertEqual(tpl_out, {
                 "version": 2, "event": "before_template", "data": {"catalog": catalog, "other": True}})
             self.assertTrue(template["data"]["other"])
             self.assertEqual(template["data"]["catalog"], {"stale": True})

@@ -94,7 +94,7 @@ class OfflineSiteTests(unittest.TestCase):
             nested = Path("items/page/2.html")
             global_html = (pages / nested).read_text()
             domestic_html = (cn / nested).read_text()
-            self.assertIn('href="../../site.css"', global_html)
+            self.assertIn('href="../../site.css?v=', global_html)
             self.assertNotRegex(global_html, r'(?:href|src|action)="/(?!/)')
             self.assertNotIn("京ICP备", global_html)
             self.assertIn("京ICP备", domestic_html)
