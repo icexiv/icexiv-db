@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    {% include 'head' %}
+    {% if assets.highlight %}
+      <link rel="stylesheet" href="{{assets.highlight}}">
+    {% endif %}
+  </head>
+  <body>
+    {% include 'header' %}
+    <div class="workspace" id="page-content">
+    <main>{{page.html | safe}}</main>
+    {% include 'footer' %}
+    </div>
+    {% if site.data.assets is defined %}
+    <script type="application/json" id="site-assets">{{site.data.assets | to_json}}</script>
+    {% endif %}
+    {% if assets.components %}
+    <script type="module" src="{{assets.components}}"></script>
+    {% endif %}
+    <script type="module" src="{{url(path='lookup.js')}}"></script>
+    <script type="module" src="{{url(path='catalog-return.js')}}"></script>
+    <script type="module" src="{{url(path='item-actions.js')}}"></script>
+  </body>
+</html>

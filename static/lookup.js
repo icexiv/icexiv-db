@@ -1,4 +1,6 @@
 // Global lookup is independent of the active catalog view and its presets.
+import {iconUrl} from './assets.js';
+
 const form = document.querySelector('#item-lookup');
 const input = form.elements.q;
 const popup = document.querySelector('#lookup-results');
@@ -50,7 +52,7 @@ async function suggest() {
         const link = document.createElement('a');
         link.href = new URL(`items/${id}.html`, assets);
         const image = document.createElement('img');
-        image.src = new URL(icon.slice(1), assets);
+        image.src = iconUrl(icon, assets);
         image.alt = '';
         const label = document.createElement('span');
         label.textContent = name;
@@ -82,9 +84,15 @@ input.addEventListener('compositionend', suggest);
 input.addEventListener('focus', suggest);
 form.addEventListener('focusout', event => { if (!form.contains(event.relatedTarget)) close(); });
 document.addEventListener('pointerdown', event => { if (!form.contains(event.target)) close(); });
+document.addEventListener('keydown', event => {
+  if (event.isComposing || event.altKey || event.shiftKey || !(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'k') return;
+  event.preventDefault();
+  input.focus();
+});
 form.addEventListener('keydown', event => {
-  if (event.isComposing || popup.hidden) return;
-  if (event.key === 'Escape') { input.focus(); close(); event.preventDefault(); return; }
+  if (event.isComposing) return;
+  if (event.key === 'Escape') { event.preventDefault(); input.focus(); close(); return; }
+  if (popup.hidden) return;
   if (!['ArrowDown','ArrowUp'].includes(event.key)) return;
   const links = [...popup.querySelectorAll('a')];
   if (!links.length) return;
@@ -93,4 +101,3 @@ form.addEventListener('keydown', event => {
   links[current < 0 ? (event.key === 'ArrowDown' ? 0 : links.length - 1)
     : (current + (event.key === 'ArrowDown' ? 1 : -1) + links.length) % links.length].focus();
 });
-form.hidden = false;

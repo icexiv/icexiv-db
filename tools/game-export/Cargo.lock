@@ -147,6 +147,7 @@ dependencies = [
 [[package]]
 name = "icexiv-data"
 version = "0.1.0"
+source = "git+https://github.com/icexiv/icexiv-data.git?rev=c365a807a6bcf48b2696823d2145acce26500074#c365a807a6bcf48b2696823d2145acce26500074"
 dependencies = [
  "bcdec_rs",
  "binrw",

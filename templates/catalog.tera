@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    {% include 'head' %}
+    {% if assets.highlight %}
+      <link rel="stylesheet" href="{{assets.highlight}}">
+    {% endif %}
+  </head>
+  <body>
+    {% include 'header' %}
+    <div class="workspace" id="page-content">
+    <div class="catalog-intro">
+      <div><h1>物品图鉴</h1><p class="source-note">国服物品目录 · {{site.data.catalog.count}} 件收录</p></div>
+    </div>
+    <main id="catalog-page" data-asset-root="{{page.root}}" data-index-url="{{page.root}}{{site.data.catalog.assetPath}}/index.json" data-detail-base="{{page.root}}items/" data-catalog-url="{{page.root}}items/index.html" data-page-size="{{site.data.catalog.pageSize}}">{{page.html | safe}}</main>
+    {% include 'footer' %}
+    </div>
+    {% if site.data.assets is defined %}
+    <script type="application/json" id="site-assets">{{site.data.assets | to_json}}</script>
+    {% endif %}
+    {% if assets.components %}
+    <script type="module" src="{{assets.components}}"></script>
+    {% endif %}
+    <script type="module" src="{{url(path='lookup.js')}}"></script>
+    <script type="module" src="{{url(path='catalog-return.js')}}"></script>
+    <script type="module" src="{{url(path='catalog.js')}}"></script>
+  </body>
+</html>

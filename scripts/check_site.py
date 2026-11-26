@@ -1,14 +1,17 @@
-"""Verify the real generated catalog and all its static links without a server."""
+"""Verify the generated catalog, data shards and all static links without a server."""
 
 from html.parser import HTMLParser
 import json
 from pathlib import Path
+import re
 import sys
 from urllib.parse import unquote, urlsplit
 
 from items import prepared_catalog
 
 ROOT = Path(__file__).resolve().parent.parent
+RECIPE_SHARD = 128
+RELATION_SHARD = 16
 
 
 class Links(HTMLParser):
@@ -24,8 +27,9 @@ class Links(HTMLParser):
 
 def main():
     output = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "notist-output/icexiv-db"
-    _, catalog = prepared_catalog(ROOT / "inputs/game-export")
-    index = json.loads((output / catalog["assetPath"] / "index.json").read_text())
+    _, catalog = prepared_catalog()
+    assets = output / catalog["assetPath"]
+    index = json.loads((assets / "index.json").read_text())
     assert len(index) == catalog["count"]
     expected = {f"{item[0]}.html" for item in index}
     actual = {p.name for p in (output / "items").glob("*.html") if p.name != "index.html"}
@@ -35,9 +39,18 @@ def main():
     failures = []
     for record in index:
         icon = record[3]
-        assert icon.startswith("/"), "Search icons must use site-root-relative asset paths"
-        if not (output / icon.lstrip("/")).is_file():
-            failures.append(f"search item {record[0]}: {icon}")
+        assert isinstance(icon, int) and icon >= 0, f"Expected integer icon ID, got {icon!r}"
+    # Every detail page references only shards that were actually generated.
+    for page in (output / "items").glob("*.html"):
+        if page.name == "index.html":
+            continue
+        html = page.read_text()
+        for shard in {int(n) for n in re.findall(r'<notist-modules-game-recipe-panel\b[^>]*notist-id="(\d+)"', html)}:
+            if not (assets / "recipes" / f"{shard // RECIPE_SHARD}.json").is_file():
+                failures.append(f"{page}: missing recipe shard for item {shard}")
+        for key in {int(n) for n in re.findall(r'<notist-modules-game-gear-group\b[^>]*notist-key="(\d+)"', html)}:
+            if not (assets / "relations" / f"{key // RELATION_SHARD}.json").is_file():
+                failures.append(f"{page}: missing relation shard for group {key}")
     for path in output.rglob("*.html"):
         parser = Links()
         parser.feed(path.read_text())

@@ -1,0 +1,48 @@
+fn kind_base(kind: String) -> String {
+    read_json("/content/.data/runtime-assets.json").get(kind).as_string("")
+}
+
+fn icon(icon_id: String) -> String {
+    let base = kind_base("icons");
+    if icon_id == "" || icon_id == "0" || base == "" {
+        "/icon-placeholder.svg"
+    } else {
+        base + "/" + icon_id + ".webp"
+    }
+}
+
+fn portrait(image_id: String) -> String {
+    let base = kind_base("portraits");
+    if image_id == "" || image_id == "0" || base == "" {
+        ""
+    } else {
+        base + "/" + image_id + ".webp"
+    }
+}
+
+fn orchestrion(item_id: String) -> String {
+    let base = kind_base("orchestrion");
+    if item_id == "" || base == "" {
+        ""
+    } else {
+        base + "/" + item_id + ".mp3"
+    }
+}
+
+fn model_manifest(item_id: String) -> String {
+    let base = kind_base("models");
+    if item_id == "" || base == "" {
+        ""
+    } else {
+        base + "/manifests/" + item_id + ".json"
+    }
+}
+
+fn action_manifest(item_id: String) -> String {
+    let base = kind_base("models");
+    if item_id == "" || base == "" {
+        ""
+    } else {
+        base + "/actions/" + item_id + ".json"
+    }
+}

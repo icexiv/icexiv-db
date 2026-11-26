@@ -42,8 +42,12 @@
           };
           craneLib = (crane.mkLib pkgs).overrideToolchain toolchain;
           notistPackage = notist.packages.${system}.default;
+          sitePython = pkgs.python3;
           mkSite =
-            { gameExport }:
+            {
+              gameExport,
+              assetsSource ? "disabled",
+            }:
             pkgs.stdenvNoCC.mkDerivation {
               pname = "icexiv-db";
               version = "0.1.0";
@@ -52,8 +56,6 @@
                 fileset = pkgs.lib.fileset.unions [
                   ./Notist.toml
                   ./content
-                  ./docs/game-data-rules.md
-                  ./docs/item-categories.md
                   ./templates
                   ./static
                   ./modules
@@ -63,14 +65,14 @@
               };
               nativeBuildInputs = [
                 notistPackage
-                pkgs.python3
+                sitePython
               ];
               buildPhase = ''
                 runHook preBuild
                 mkdir -p inputs
                 cp -r ${gameExport} inputs/game-export
                 python3 scripts/items.py prepare
-                notist build
+                GAME_ASSETS_SOURCE=${pkgs.lib.escapeShellArg assetsSource} notist build
                 python3 scripts/check_site.py notist-output/icexiv-db
                 runHook postBuild
               '';
@@ -85,13 +87,23 @@
         {
           packages = {
             notist = notistPackage;
+            site-python = sitePython;
+            # The released decoder lacks support for HCA in newer XIV SCDs.
+            orchestrion-decoder = pkgs.vgmstream.overrideAttrs {
+              version = "git-5d55744";
+              src = pkgs.fetchzip {
+                url = "https://codeload.github.com/vgmstream/vgmstream/tar.gz/5d5574405d61876cb995c17d86ccb8fd0be3565e";
+                extension = "tar.gz";
+                hash = "sha256-tBklGJfspNBf33I0AhZla+ac0EKxzhPARxZ9F/xSoxE=";
+              };
+            };
           };
           lib.mkSite = mkSite;
           checks.data =
             pkgs.runCommand "icexiv-db-data-tests"
               {
                 nativeBuildInputs = [
-                  pkgs.python3
+                  sitePython
                   pkgs.nodejs
                 ];
                 src = pkgs.lib.fileset.toSource {
@@ -100,7 +112,9 @@
                     ./scripts
                     ./tests
                     ./ops/cn
+                    ./static/assets.js
                     ./static/catalog.js
+                    ./static/item-list.js
                   ];
                 };
               }
@@ -122,7 +136,9 @@
             packages = [
               notistPackage
               pkgs.git
-              pkgs.python3
+              pkgs.just
+              pkgs.miniserve
+              sitePython
               pkgs.nodejs
             ];
           };

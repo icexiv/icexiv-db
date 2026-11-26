@@ -1,0 +1,13 @@
+{
+  "2025.12.09.0000.0000": {"patch": "7.4", "source": "https://github.com/icexiv/icexiv-db/blob/2fa51721ae2408b6a2d52851cbbc23e6b7418c58/scripts/release_snapshot.py#L13"},
+  "2025.12.18.0000.0000": {"patch": "7.4", "source": "https://github.com/icexiv/icexiv-db/blob/2fa51721ae2408b6a2d52851cbbc23e6b7418c58/scripts/release_snapshot.py#L13"},
+  "2025.12.23.0000.0000": {"patch": "7.4", "source": "https://github.com/icexiv/icexiv-db/blob/2fa51721ae2408b6a2d52851cbbc23e6b7418c58/scripts/release_snapshot.py#L13"},
+  "2026.01.21.0000.0000": {"patch": "7.41", "source": "https://github.com/icexiv/icexiv-db/blob/2fa51721ae2408b6a2d52851cbbc23e6b7418c58/scripts/release_snapshot.py#L14"},
+  "2026.02.20.0000.0000": {"patch": "7.45", "source": "https://github.com/icexiv/icexiv-db/blob/2fa51721ae2408b6a2d52851cbbc23e6b7418c58/scripts/release_snapshot.py#L14"},
+  "2026.03.07.0000.0000": {"patch": "7.45", "source": "https://github.com/icexiv/icexiv-db/blob/2fa51721ae2408b6a2d52851cbbc23e6b7418c58/scripts/release_snapshot.py#L14"},
+  "2026.04.21.0000.0000": {"patch": "7.5", "source": "https://github.com/icexiv/icexiv-db/blob/2fa51721ae2408b6a2d52851cbbc23e6b7418c58/scripts/release_snapshot.py#L15"},
+  "2026.05.01.0000.0000": {"patch": "7.5", "source": "https://github.com/icexiv/icexiv-db/blob/2fa51721ae2408b6a2d52851cbbc23e6b7418c58/scripts/release_snapshot.py#L15"},
+  "2026.05.25.0000.0000": {"patch": "7.51", "source": "https://bbs.nga.cn/read.php?tid=46878300"},
+  "2026.07.16.0001.0000": {"patch": "7.55", "source": "https://ff.web.sdo.com/web8/index.html#/newstab/newscont/391200"},
+  "2026.09.01.0000.0000": {"patch": "7.56", "source": "https://ff.web.sdo.com/web8/index.html#/newstab/newscont/392752"}
+}

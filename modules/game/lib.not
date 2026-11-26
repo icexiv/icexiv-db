@@ -1,0 +1,9 @@
+// Semantic external components for IceXIV DB item pages.
+// Pure typed signatures — zero HTML, CSS, or JS details inside `.not`.
+
+fn actions(id: String, name: String, category: String, marketable: Bool) -> Inline;
+fn recipe_panel(mode: String, id: String) -> Block;
+fn gear_group(key: Int, item: String) -> Block;
+fn orchestrion_player(audio: String) -> Block;
+fn model_viewer(manifest: String) -> Block;
+fn action_viewer(manifest: String) -> Block;

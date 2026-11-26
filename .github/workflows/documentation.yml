@@ -4,6 +4,11 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+  # Follow datamining-cn: a daily rebuild picks up new CSV rows.
+  schedule:
+    - cron: '0 20 * * *'
+  repository_dispatch:
+    types: [datamining-update]
 
 permissions:
   contents: read
@@ -21,24 +26,59 @@ jobs:
       - name: Build locked Notist CLI
         run: nix build --no-update-lock-file --max-jobs 1 --cores 2 .#notist --out-link result-notist
       - name: Test offline catalog and site fixture
+        env:
+          NOTIST_TEST_BIN: ${{ github.workspace }}/result-notist/bin/notist
         run: |
-          NOTIST_TEST_BIN="$PWD/result-notist/bin/notist" python3 -m unittest discover -s tests -v
+          nix build --no-update-lock-file .#site-python --out-link result-python
+          echo "$PWD/result-python/bin" >> "$GITHUB_PATH"
+          PATH="$PWD/result-python/bin:$PATH" python3 -m unittest discover -s tests -v
           node --test tests/catalog.test.cjs
 
-      - name: Fetch pinned production export
+      - name: Fetch datamining CSVs
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         env:
-          GH_TOKEN: ${{ github.token }}
+          DM_REPO: thewakingsands/ffxiv-datamining-cn
+          DM_COMMIT: ${{ vars.DATAMINING_COMMIT }}
         run: |
-          gh release download export-2026.10.06 --pattern game-export.tar.gz
-          sha256sum -c sources/game-export.sha256
-          mkdir -p inputs
-          tar -xzf game-export.tar.gz -C inputs
+          commit="${DM_COMMIT:-$(git ls-remote "https://github.com/$DM_REPO" HEAD | cut -f1)}"
+          echo "DM_COMMIT=$commit" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/dm"
+          for name in Item ItemAction ClassJob ClassJobCategory EquipSlotCategory Recipe \
+                      OrchestrionPath Emote ActionTimeline Action GameConditionValueArray \
+                      BannerCondition BannerBg BannerFrame BannerDecoration BannerTimeline \
+                      CharaCardBase CharaCardDecoration CharaCardHeader; do
+            curl -fsSL --retry 3 --retry-all-errors \
+              "https://raw.githubusercontent.com/$DM_REPO/$commit/$name.csv" \
+              -o "$RUNNER_TEMP/dm/$name.csv"
+          done
 
-      - name: Build and verify both distributions
+      - name: Build the site data manifest
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        run: |
+          python3 scripts/pipeline/manifest.py from-csv "$RUNNER_TEMP/dm" --commit "$DM_COMMIT"
+
+      - name: Prepare pure manifest data
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         run: |
           python3 scripts/items.py prepare
+
+      - name: Install pinned renderer SDK
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.GAME_ASSETS_SOURCE != 'disabled'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SDK_TAG: ${{ vars.RENDERER_RELEASE_TAG || 'dev-build' }}
+          SDK_SHA256: ${{ vars.RENDERER_SDK_SHA256 || 'b160969fa70ced38651a36f1fbff28571acf5207c47c281c2e069a095cfc5755' }}
+        run: |
+          gh release download "$SDK_TAG" --repo icexiv/icexiv-renderer \
+            --pattern icexiv-renderer-web.tgz --dir "$RUNNER_TEMP"
+          python3 scripts/media.py install-sdk "$RUNNER_TEMP/icexiv-renderer-web.tgz" \
+            --sha256 "$SDK_SHA256"
+
+      - name: Package and verify both sites
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        env:
+          GAME_ASSETS_SOURCE: ${{ vars.GAME_ASSETS_SOURCE || vars.GAME_ASSET_CDN_ROOT || 'prod' }}
+        run: |
           result-notist/bin/notist build -j 2
           python3 scripts/package_site.py notist-output/icexiv-db dist/pages dist/domestic
           python3 scripts/check_site.py dist/pages

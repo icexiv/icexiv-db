@@ -7,36 +7,18 @@
     {% endif %}
   </head>
   <body>
-    {% set book = page.route.path is starting_with(pat='docs/') %}
     {% include 'header' %}
-    <div class="workspace">
-    {% set home = page.route.path == 'index.md' %}
-    {% set first_page = page.route.path == 'items/index.md' %}
-    {% set catalog_page = home or first_page or page.route.path is starting_with(pat='items/page/') %}
-    {% set root = '../../' %}{% if first_page %}{% set root = '../' %}{% elif home %}{% set root = './' %}{% endif %}
-    {% if not catalog_page %}{% set root = '../' %}{% endif %}
-    <div class="topbar">
-      <div class="breadcrumb">资料库 <span>/</span> {% if book %}<a href="{{url(path='docs/index.html')}}">开发手册</a>{% else %}<a href="{{url(path='items/index.html')}}">物品</a>{% endif %}</div>
-      <form id="item-lookup" role="search" action="{{root}}items/index.html" data-assets="{{root}}" data-index="{{root}}{{site.data.catalog.assetPath}}/index.json" hidden>
-        <input type="search" id="lookup-query" name="q" autocomplete="off" aria-label="搜索全部物品" placeholder="搜索全部物品 · 名称或 ID">
-        <button type="submit">搜索</button>
-        <div id="lookup-results" aria-label="搜索建议" hidden></div>
-      </form>
-    </div>
-    <main{% if book %} class="book-reader"{% elif catalog_page %} id="catalog-page" data-asset-root="{{root}}" data-index-url="{{root}}{{site.data.catalog.assetPath}}/index.json" data-detail-base="{{root}}items/" data-catalog-url="{{root}}items/index.html" data-page-size="{{site.data.catalog.pageSize}}"{% endif %}>{{page.html | replace(from='<img ', to='<img loading="lazy" decoding="async" width="32" height="32" ') | safe}}
-    {% if book %}<nav class="book-pager" aria-label="章节翻页">
-      {% if page.route.path == 'docs/index.md' %}<a rel="next" href="game-data-rules.html">下一篇：游戏数据的判定口径 →</a>
-      {% elif page.route.path == 'docs/game-data-rules.md' %}<a rel="prev" href="index.html">← 手册首页</a><a rel="next" href="item-categories.html">下一篇：物品分类清单 →</a>
-      {% else %}<a rel="prev" href="game-data-rules.html">← 上一篇：游戏数据的判定口径</a>{% endif %}
-    </nav>{% endif %}</main>
+    <div class="workspace" id="page-content">
+    <main>{{page.html | safe}}</main>
     {% include 'footer' %}
     </div>
-    <script type="module" src="{{url(path='lookup.js')}}"></script>
-    {% if catalog_page %}
-      <script type="module" src="{{url(path='catalog.js')}}"></script>
+    {% if site.data.assets is defined %}
+    <script type="application/json" id="site-assets">{{site.data.assets | to_json}}</script>
     {% endif %}
     {% if assets.components %}
-      <script type="module" src="{{assets.components}}"></script>
+    <script type="module" src="{{assets.components}}"></script>
     {% endif %}
+    <script type="module" src="{{url(path='lookup.js')}}"></script>
+    <script type="module" src="{{url(path='catalog-return.js')}}"></script>
   </body>
 </html>

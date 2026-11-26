@@ -1,69 +1,209 @@
+import "./assets.not" as assets;
+import "./game/lib.not" as game;
+
+fn field(label: String, value: String) -> Block {
+    para[**#text(label)** #text(value)]
+}
+
 fn item(source: String, index: Int) -> Block {
-    let records = read_json(source);
-    let record = records.at(index);
-    let id = record.at(0).as_string("");
-    let name = record.at(1).as_string("");
-    let description = record.at(2).as_string("");
-    let category = record.at(3).as_string("");
-    let search_category = record.at(4).as_string("");
-    let equip_level = record.at(5).as_string("");
-    let rarity = record.at(6).as_string("");
-    let stack_size = record.at(7).as_string("");
-    let unique = record.at(8).as_string("");
-    let untradable = record.at(9).as_string("");
-    let hq = record.at(10).as_string("");
-    let icon = record.at(11).as_string("");
-    let icon_url = record.at(12).as_string("");
+    let record = read_json(source).at(index);
+    let id = record.get("id").as_string("");
+    let name = record.get("name").as_string("");
+    let category = record.get("category").as_string("");
+    let marketable = record.get("untradable").as_string("") == "否"
+        && record.get("searchCategory").as_string("") != "0";
+    let description = record.get("description").as_string("");
+    let fields_of_item = record.get("kind").as_string("");
     let description_label = if description == "" { "暂无描述。" } else { description };
-    let kind = record.at(13).as_string("");
-    let ilvl = record.at(14).as_string("");
-    let subhead = kind + " · No. " + id;
-    let back = para(link("/items/index.html", text("← 物品目录"))).with_attr("class", "back-link");
-    let icon_p = para(image(icon_url, "")).with_attr("class", "item-icon item-icon-detail");
-    let desc_p = para(text(description_label))
+    let subhead = fields_of_item + " · No. " + id;
+    let back = para[[← 物品目录](/items/index.html)].with_attr("class", "back-link");
+    let icon_src = assets.icon(record.get("icon").as_string("0"));
+    let icon_p = para[#image(icon_src, "")].with_attr("class", "item-icon item-icon-detail");
+    let desc_p = para[#text(description_label)]
         .with_attr("id", "item-description")
         .with_attr("class", "description");
-    let identity = para(strong(text("物品 ID")) + text(" ") + text(id));
-    let equipment = if ilvl == "" { identity } else {
-        identity + para(strong(text("物品品级")) + text(" ") + text(ilvl))
-        + para(strong(text("装备等级")) + text(" ") + text(equip_level))
-        + para(strong(text("装备部位")) + text(" ") + text(record.at(15).as_string("")))
-        + para(strong(text("适用职业")) + text(" ") + text(record.at(16).as_string("")))
+
+    let identity = field("物品 ID", id);
+    let ilvl = record.get("ilvl").as_string("");
+    let equipment = if ilvl == "" {
+        identity
+    } else {
+        [
+            #identity
+            #field("物品品级", ilvl)
+            #field("装备等级", record.get("equipLevel").as_string(""))
+            #field("装备部位", record.get("slots").as_string(""))
+            #field("适用职业", record.get("jobs").as_string(""))
+        ]
     };
-    let fields = div(
-        equipment
-        + para(strong(text("首次收录版本")) + text(" ") + text(record.at(17).as_string("")))
-        + para(strong(text("分类 ID")) + text(" ") + text(category))
-        + para(strong(text("搜索分类 ID")) + text(" ") + text(search_category))
-        + para(strong(text("稀有度")) + text(" ") + text(rarity))
-        + para(strong(text("堆叠上限")) + text(" ") + text(stack_size))
-        + para(strong(text("独占")) + text(" ") + text(unique))
-        + para(strong(text("不可交易")) + text(" ") + text(untradable))
-        + para(strong(text("可 HQ")) + text(" ") + text(hq))
-        + para(strong(text("图标 ID")) + text(" ") + text(icon))
-    )
+    let fields = div[
+        #equipment
+        #field("首次收录版本", record.get("version").as_string(""))
+        #field("分类 ID", category)
+        #field("搜索分类 ID", record.get("searchCategory").as_string(""))
+        #field("稀有度", record.get("rarity").as_string(""))
+        #field("堆叠上限", record.get("stackSize").as_string(""))
+        #field("独占", record.get("unique").as_string(""))
+        #field("不可交易", record.get("untradable").as_string(""))
+        #field("可 HQ", record.get("hq").as_string(""))
+        #field("图标 ID", record.get("icon").as_string(""))
+    ]
     .with_attr("id", "item-fields")
     .with_attr("class", "item-fields");
-    let notice = section(
-        heading(2, text("获取途径"))
-        + para(text("此版本只接入 Item 表，尚未收录来源。不能据此判断物品不可获得。"))
-    )
-    .with_attr("class", "notice");
-    let detail_content = div(desc_p + fields + notice).with_attr("id", "detail-content");
-    let item_detail = section(
-        icon_p
-        + heading(1, text(name))
-        + para(text(subhead)).with_attr("class", "muted")
-        + detail_content
-    )
-    .with_attr("id", "item-detail");
-    back + item_detail
+
+    let notice = section[
+        #heading(2)[获取途径]
+
+        尚未收录获取途径。不能据此判断物品不可获得。
+    ].with_attr("class", "notice");
+
+    let ingredient_count = record.get("ingredientCount").as_int(0);
+    let recipes = if ingredient_count == 0 {
+        notice
+    } else {
+        section[
+            #heading(2)[如何制作此物品#text(" · " + ingredient_count.to_string() + " 条配方").with_attr("class", "craft-count")]
+            #game.recipe_panel("ingredients", id)
+        ].with_attr("class", "crafting-recipes")
+    };
+
+    let book_count = record.get("bookCount").as_int(0);
+    let content = if book_count == 0 {
+        fields
+    } else {
+        [
+            #fields
+            #section[
+                #heading(2)[解锁配方（#text(book_count.to_string())）]
+                #game.recipe_panel("book", id)
+            ].with_attr("class", "crafting-recipes")
+        ]
+    };
+
+    let kit_status = record.get("kitStatus").as_string("");
+    let body = if kit_status == "" {
+        content
+    } else {
+        let gallery = if kit_status == "未匹配" {
+            para[暂无已核实的部件预览。]
+        } else {
+            blocks(for group in record.get("kitSections").as_list() {
+                [
+                    #heading(3)[#text(group.at(0).as_string(""))]
+                    #div(blocks(for part in group.at(1).as_list() {
+                        let image_id = part.at(2).as_string("");
+                        let path = assets.portrait(image_id);
+                        let label = group.at(0).as_string("") + " · " + part.at(0).as_string("") + " · " + part.at(1).as_string("");
+                        let picture = if path == "" { [暂无图片] } else {
+                            link(path)[#image(path, label)].with_attr("class", "portrait-open")
+                        };
+                        div[
+                            #para[#picture]
+                            #para[**#text(part.at(0).as_string(""))**]
+                            #para[#text(part.at(1).as_string(""))]
+                        ]
+                    })).with_attr("class", "portrait-gallery")
+                ]
+            })
+        };
+        [
+            #content
+            #section[
+                #heading(2)[解锁内容]
+                #gallery
+            ].with_attr("class", "portrait-kit")
+        ]
+    };
+
+    let use_count = record.get("useCount").as_int(0);
+    let acquisition_and_uses = if use_count == 0 {
+        recipes
+    } else {
+        [
+            #recipes
+            #section[
+                #heading(2)[此物品可用于制作#text(" · " + use_count.to_string() + " 种成品").with_attr("class", "craft-count")]
+                #game.recipe_panel("uses", id)
+            ].with_attr("class", "crafting-uses")
+        ]
+    };
+
+    let relations = blocks(for group in record.get("relations").as_list() {
+        let key = group.at(0).as_int(0);
+        let title = group.at(1).as_string("");
+        let label = heading(2)[#text(title)];
+        let intro = if title == "同模型装备" {
+            [
+                #label
+                #para[预览使用相同的模型文件，材质和配色可能不同。].with_attr("class", "muted")
+            ]
+        } else {
+            label
+        };
+        section[
+            #intro
+            #game.gear_group(key, id)
+        ].with_attr("class", "gear-relations")
+    });
+
+    let detail_content = div[
+        #desc_p
+        #body
+        #acquisition_and_uses
+        #relations
+    ].with_attr("id", "detail-content");
+
+    let item_detail = section[
+        #div[
+            #icon_p
+            #div[
+                #div[
+                    #heading(1)[#text(name)]
+                    #para[#game.actions(id, name, category, marketable)]
+                ].with_attr("class", "item-title")
+                #para[#text(subhead)].with_attr("class", "muted")
+            ]
+        ].with_attr("class", "detail-heading")
+        #detail_content
+    ].with_attr("id", "item-detail");
+
+    let music_url = assets.orchestrion(id);
+    let with_music = if music_url != "" && record.get("hasOrchestrion").as_bool(false) {
+        [
+            #back
+            #item_detail
+            #game.orchestrion_player(music_url)
+        ]
+    } else {
+        [
+            #back
+            #item_detail
+        ]
+    };
+
+    let model_url = assets.model_manifest(id);
+    let with_model = if model_url != "" && record.get("hasModel").as_bool(false) {
+        [
+            #with_music
+            #game.model_viewer(model_url)
+        ]
+    } else {
+        with_music
+    };
+
+    let action_url = assets.action_manifest(id);
+    if action_url != "" && record.get("hasAction").as_bool(false) {
+        [
+            #with_model
+            #game.action_viewer(action_url)
+        ]
+    } else {
+        with_model
+    }
 }
 
 fn catalog(source: String) -> Block {
     let page = read_json(source);
-    let count = page.get("count").as_int(0);
-    let version = page.get("version").as_string("");
     let page_size = page.get("pageSize").as_int(0);
     let label = page.get("label").as_string("");
     let previous_path = page.get("previous").as_string("");
@@ -73,40 +213,34 @@ fn catalog(source: String) -> Block {
         let id = record.at(0).as_string("");
         let name = record.at(1).as_string("");
         let category = record.at(2).as_string("");
-        let icon_url = record.at(3).as_string("");
+        let icon_src = assets.icon(record.at(3).as_string("0"));
         let target = "/items/" + id + ".html";
-        let name_cell = image(icon_url, "").with_attr("class", "item-icon")
-            + text(" ")
-            + link(target, text(name));
+        let name_cell = [#image(icon_src, "").with_attr("class", "item-icon") #link(target)[#text(name)]];
         (text(id), name_cell, text(category))
     };
-    let previous = if previous_path == "" {
-        []
-    } else {
-        link(previous_path, text("上一页"))
-    };
-    let next = if next_path == "" {
-        []
-    } else {
-        link(next_path, text("下一页"))
-    };
-    let count_label = count.to_string() + " 件物品";
-    let version_label = "客户端 " + version;
-    let page_label = " " + label + " ";
+    let previous = if previous_path == "" { [] } else { link(previous_path)[上一页] };
+    let next = if next_path == "" { [] } else { link(next_path)[下一页] };
+    let numbers = inlines(for entry in page.get("pagination").as_list() {
+        let number = entry.at(0).as_string("");
+        let path = entry.at(1).as_string("");
+        if number == "…" {
+            text(number)
+        } else if path == "" {
+            strong[#text(number)].with_attr("aria-current", "page")
+        } else {
+            link(path)[#text(number)].with_attr("aria-label", "第 " + number + " 页")
+        }
+    });
     let status_label = "每页 " + page_size.to_string() + " 件 · " + label;
-    let tbl = table((text("编号"), text("物品名称"), text("类型")), rows);
+    let tbl = table(([编号], [物品名称], [类型]), rows);
     let table_wrap = div(tbl).with_attr("class", "table-scroll");
-    let pagination = para(previous + text(page_label) + next)
+    let pagination = para[#previous#numbers#next]
         .with_attr("class", "pagination")
+        .with_attr("role", "navigation")
         .with_attr("aria-label", "静态物品目录分页");
-    let catalog_box = div(
-        para(text(status_label)).with_attr("id", "catalog-status")
-        + table_wrap
-        + pagination
-    )
-    .with_attr("id", "catalog");
-    heading(1, text("物品图鉴"))
-        + para(text("艾欧泽亚的装备、素材与道具")).with_attr("class", "intro")
-        + para(text("国服收录 · " + count_label)).with_attr("class", "source-note")
-        + catalog_box
+    div[
+        #para[#text(status_label)].with_attr("id", "catalog-status")
+        #table_wrap
+        #pagination
+    ].with_attr("id", "catalog")
 }

@@ -1,0 +1,13 @@
+[package]
+name = "icexiv-db-renderer-probe"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+# Both pinned by Cargo.lock; no adjacent checkouts required.
+icexiv-renderer = { git = "https://github.com/icexiv/icexiv-renderer.git", rev = "efc5c0d3a6aaa31387ac30d086b4775ca6da2acf" }
+icexiv-data = { git = "https://github.com/icexiv/icexiv-data.git", rev = "c365a807a6bcf48b2696823d2145acce26500074", features = ["local"] }
+serde_json = "1"
+sha2 = "0.10"
+tokio = { version = "1", features = ["rt"] }

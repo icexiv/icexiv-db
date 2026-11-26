@@ -1,20 +1,16 @@
 import copy
-import importlib.util
 import io
 import json
+import os
 from pathlib import Path
 import selectors
-import struct
 import subprocess
 import sys
 import tempfile
 import unittest
 from unittest.mock import patch
-import zlib
 
-spec = importlib.util.spec_from_file_location("items", Path(__file__).resolve().parents[1] / "scripts/items.py")
-items = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(items)
+from scripts import items
 
 
 def item_fixture(item_id=1, **values):
@@ -29,30 +25,21 @@ def fixture(records):
 
 def export_fixture(root, records=None):
     records = [item_fixture()] if records is None else records
-    schema = {"version": 1, "gameVersion": "synthetic", "language": "chs", "exhSha256": "a" * 64, "fields": {}}
-    items.write_json(root / "sources/item-schema.json", schema)
-    schema_bytes = (root / "sources/item-schema.json").read_bytes()
     directory = root / "inputs/game-export"
     items.write_json(directory / "items.json", records)
-    source = {"kind": "game", "gameVersion": "synthetic", "language": "chs",
-              "schemaSha256": items.sha256(schema_bytes), "resources": {"exd/item.exh": "a" * 64}}
-    def chunk(kind, data):
-        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
-    png = (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, 6, 0, 0, 0))
-           + chunk(b"IDAT", zlib.compress(b"\0\xff\0\0\x80")) + chunk(b"IEND", b""))
-    icons = {}
-    for icon_id in {record["icon"] for record in records}:
-        if icon_id == 0:
-            icons["0"] = {"status": "unconfigured"}
-        else:
-            path = directory / "icons" / f"{icon_id}.png"
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_bytes(png)
-            icons[str(icon_id)] = {"status": "exported", "resource": f"ui/icon/000000/{icon_id:06}.tex",
-                                   "sha256": items.sha256(png), "width": 1, "height": 1}
-    manifest = {"version": 1, "source": source, "itemCount": len(records),
-                "itemsSha256": items.sha256((directory / "items.json").read_bytes()),
-                "textMacros": {}, "icons": icons}
+    source = {
+        "kind": "datamining",
+        "gameVersion": "synthetic",
+        "language": "chs",
+        "commit": "0123456789abcdef",
+        "files": {"Item.csv": "a" * 64},
+    }
+    manifest = {
+        "version": 2,
+        "source": source,
+        "itemCount": len(records),
+        "itemsSha256": items.sha256((directory / "items.json").read_bytes()),
+    }
     items.write_json(directory / "manifest.json", manifest)
     return directory, manifest
 
@@ -74,68 +61,49 @@ class ItemTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "nonempty"):
             items.parse_items(b"[]")
 
-    def test_bundle_schema_count_and_item_hash_are_checked(self):
+    def test_bundle_identity_count_and_item_hash_are_checked(self):
         with tempfile.TemporaryDirectory() as directory, patch.object(items, "ROOT", Path(directory)):
             path, manifest = export_fixture(Path(directory))
             self.assertEqual(len(items.load_export(path)[1]), 1)
             variants = []
-            for key, value in [("gameVersion", "wrong"), ("schemaSha256", "b" * 64), ("kind", "other")]:
+            for key, value in [("gameVersion", ""), ("commit", ""), ("kind", "other"), ("files", {})]:
                 invalid = copy.deepcopy(manifest)
                 invalid["source"][key] = value
                 variants.append(invalid)
-            variants.extend([manifest | {"itemCount": 2}, manifest | {"itemsSha256": "bad"}])
+            variants.extend([manifest | {"itemCount": 2}, manifest | {"itemsSha256": "bad"}, manifest | {"version": 9}])
             for invalid in variants:
                 items.write_json(path / "manifest.json", invalid)
                 with self.assertRaises(ValueError):
                     items.load_export(path)
 
-    def test_icon_failures_missing_and_corruption_are_distinct(self):
-        with tempfile.TemporaryDirectory() as directory, patch.object(items, "ROOT", Path(directory)):
-            path, manifest = export_fixture(Path(directory), [item_fixture(), item_fixture(2, icon=0)])
-            invalid = copy.deepcopy(manifest)
-            invalid["icons"]["12"] = {"status": "failed", "error": "bad data"}
-            items.write_json(path / "manifest.json", invalid)
-            with self.assertRaisesRegex(ValueError, "failed export"):
-                items.load_export(path)
-            invalid["icons"]["12"] = {"status": "missing"}
-            items.write_json(path / "manifest.json", invalid)
-            self.assertEqual(items.load_export(path)[2], {})
-            del invalid["icons"]["12"]
-            items.write_json(path / "manifest.json", invalid)
-            with self.assertRaisesRegex(ValueError, "icon ID set"):
-                items.load_export(path)
-            items.write_json(path / "manifest.json", manifest)
-            (path / "icons/12.png").write_bytes(b"bad")
-            with self.assertRaisesRegex(ValueError, "PNG SHA-256"):
-                items.load_export(path)
-
-    def test_prepare_and_extension_share_identity_and_icon_urls(self):
+    def test_prepare_is_pure_manifest_and_extension_resolves_assets(self):
         with tempfile.TemporaryDirectory() as directory, patch.object(items, "ROOT", Path(directory)):
             root = Path(directory)
-            path, manifest = export_fixture(root, [item_fixture(i, icon=12 if i % 2 else 0) for i in range(1, 102)])
+            path, _ = export_fixture(root, [item_fixture(i, icon=12 if i % 2 else 0) for i in range(1, 102)])
             items.prepare(path)
-            _, catalog = items.prepared_catalog(path)
-            self.assertFalse((root / "data/catalog.json").exists())
+            _, catalog = items.prepared_catalog()
             assets = root / "static" / catalog["assetPath"]
             index = json.loads((assets / "index.json").read_text())
-            self.assertEqual(index[0][3], f"/{catalog['assetPath']}/icons/12.png")
-            self.assertEqual(index[1][3], items.PLACEHOLDER)
-            self.assertEqual(len(list((assets / "icons").glob("*.png"))), 1)
+            self.assertEqual(index[0][3], 12)
+            self.assertEqual(index[1][3], 0)
             records = json.loads((root / "content/.data/items/0.json").read_text())
             pages = json.loads((root / "content/.data/catalog/page-1.json").read_text())
-            self.assertEqual(records[0][12], index[0][3])
-            self.assertEqual(pages["items"][0][3], index[0][3])
+            self.assertEqual(records[0]["icon"], "12")
+            self.assertNotIn("iconUrl", records[0])
+            self.assertEqual(pages["items"][0][3], "12")
+            self.assertEqual(records[0]["kind"], "大斧")
             request = {"version": 2, "event": "before_compile",
                        "documents": {"index.md": "# Home"}}
             state = {}
-            response = items.extend(copy.deepcopy(request), path, state=state)
+            with patch.dict(os.environ, GAME_ASSETS_SOURCE="disabled"):
+                response = items.extend(copy.deepcopy(request), path, state=state)
             documents = response["documents"]
             self.assertEqual(len(documents), 104)
             self.assertIn('#views.item("../.data/items/0.json", 100)', documents["items/101.md"])
             self.assertIn('#views.catalog("../../.data/catalog/page-2.json")', documents["items/page/2.md"])
             self.assertNotIn("data", response)
             template = {"version": 2, "event": "before_template", "pages": [],
-                         "data": {"catalog": {"stale": True}, "other": True}}
+                        "data": {"catalog": {"stale": True}, "other": True}}
             self.assertEqual(items.extend(template, path, state=state), {
                 "version": 2, "event": "before_template", "data": {"catalog": catalog, "other": True}})
             self.assertTrue(template["data"]["other"])
@@ -146,13 +114,6 @@ class ItemTests(unittest.TestCase):
             items.write_json(root / "content/.data/prepared.json", {"exportSha256": "bad"})
             with self.assertRaisesRegex(ValueError, "prepare before"):
                 items.extend(request, path)
-            marker = root / "static/generated/keep-on-error"
-            marker.write_text("keep")
-            (path / "icons/12.png").write_bytes(b"corrupt")
-            with self.assertRaisesRegex(ValueError, "SHA-256"):
-                items.prepare(path)
-            self.assertTrue(marker.exists())
-            self.assertTrue((path / "manifest.json").exists())
 
     def test_extension_state_is_build_local_and_committed_only_on_success(self):
         with tempfile.TemporaryDirectory() as directory, patch.object(items, "ROOT", Path(directory)):
@@ -163,13 +124,15 @@ class ItemTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "before_compile"):
                 items.extend(template, path, state=state)
             compile_request = {"version": 2, "event": "before_compile", "documents": {"index.md": "# Home"}}
-            items.extend(compile_request, path, state=state)
+            with patch.dict(os.environ, GAME_ASSETS_SOURCE="disabled"):
+                items.extend(compile_request, path, state=state)
             self.assertEqual(compile_request["documents"], {"index.md": "# Home"})
-            # The second event uses the validated build snapshot, not another disk read.
+            # before_template uses the in-memory build snapshot, not another disk read.
             (path / "manifest.json").unlink()
             response = items.extend(template, path, state=state)
             self.assertEqual(response["data"]["catalog"]["count"], 1)
-            with self.assertRaises(FileNotFoundError):
+            (Path(directory) / "content/.data/catalog.json").unlink()
+            with self.assertRaisesRegex(ValueError, "prepare before"):
                 items.extend(compile_request, path, state=state)
             self.assertEqual(state, {})
 
@@ -178,18 +141,18 @@ class ItemTests(unittest.TestCase):
             root = Path(directory)
             path, _ = export_fixture(root)
             with self.assertRaisesRegex(ValueError, "prepare before"):
-                items.prepared_catalog(path)
+                items.prepared_catalog()
             items.prepare(path)
             with patch.object(items, "write_json", side_effect=OSError("disk full")):
                 with self.assertRaisesRegex(OSError, "disk full"):
                     items.prepare(path)
             self.assertFalse((root / "content/.data/prepared.json").exists())
             with self.assertRaisesRegex(ValueError, "prepare before"):
-                items.prepared_catalog(path)
+                items.prepared_catalog()
 
-    def test_item_record_and_pagination(self):
+    def test_item_record_shape_and_pagination(self):
         record = item_fixture(7)
-        self.assertEqual(items.item_record(record), ["7", "物品 7", "说明", "3", "4", "5", "1", "99", "否", "否", "是", "12", items.PLACEHOLDER])
+        self.assertEqual(items.category_name(record), "大斧")
         pages = items.catalog_pages([item_fixture(i) for i in range(1, 102)], {"gameVersion": "test"})
         self.assertEqual(pages[0]["previous"], "")
         self.assertEqual(pages[0]["next"], "/items/page/2.html")
@@ -219,12 +182,14 @@ class ItemTests(unittest.TestCase):
             root = Path(directory)
             (root / "scripts").mkdir()
             script = root / "scripts/items.py"
-            script.write_bytes((repository / "scripts/items.py").read_bytes())
-            (root / "scripts/categories.json").write_bytes((repository / "scripts/categories.json").read_bytes())
+            for name in ("items.py", "export_loader.py", "prepare.py", "extension.py",
+                         "media.py", "recipe_data.py", "categories.json"):
+                (root / "scripts" / name).write_bytes((repository / "scripts" / name).read_bytes())
             with patch.object(items, "ROOT", root):
                 bundle, _ = export_fixture(root)
                 items.prepare(bundle)
-            with subprocess.Popen([sys.executable, str(script), "extension"], cwd=root,
+            env = dict(os.environ, GAME_ASSETS_SOURCE="disabled")
+            with subprocess.Popen([sys.executable, str(script), "extension"], cwd=root, env=env,
                                   stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                   stderr=subprocess.PIPE, text=True) as process:
                 try:

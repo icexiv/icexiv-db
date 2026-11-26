@@ -83,13 +83,38 @@ async fn read_icon<S: PackSource>(
 
 async fn run() -> Result<()> {
     let args: Vec<_> = std::env::args_os().skip(1).collect();
-    const USAGE: &str = "Usage: game-export <schema.json> <installation-root> <new-output-directory>\n       game-export --inspect <installation-root>\nReads game/ffxivgame.ver and game/sqpack. Keep the installation stable while exporting.";
+    const USAGE: &str = "Usage: game-export <schema.json> <installation-root> <new-output-directory>\n       game-export --inspect <installation-root>\n       game-export --portrait-icons <installation-root> <ids.json> <new-output-directory>\nReads game/ffxivgame.ver and game/sqpack. Keep the installation stable while exporting.";
     if args.len() == 1 && args[0] == "--help" {
         println!("{USAGE}");
         return Ok(());
     }
     if args.len() == 2 && args[0] == "--inspect" {
         return sheet::inspect(PathBuf::from(&args[1])).await;
+    }
+    // Explicit illustration IDs from a reviewed portrait snapshot, not Item.Icon.
+    if args.len() == 4 && args[0] == "--portrait-icons" {
+        let install = PathBuf::from(&args[1]);
+        let version = sheet::version(&install)?;
+        let pack = SqPack::new(Local::new(install.join("game/sqpack")).await?)
+            .with_max_read_bytes(Some(BUDGET))
+            .with_index_cache(Some(BUDGET));
+        let ids: Vec<u32> = serde_json::from_slice(&std::fs::read(&args[2])?)?;
+        let output = PathBuf::from(&args[3]);
+        std::fs::create_dir(&output)?;
+        for id in ids {
+            let resource = &candidates(id)[1]; // native UI illustration
+            let bytes = match pack.read(resource).await {
+                Ok(bytes) => bytes,
+                Err(PackError::MissingResource(_)) => pack.read(&candidates(id)[0]).await?,
+                Err(error) => return Err(error.into()),
+            };
+            std::fs::write(output.join(format!("{id}.png")), png_bytes(&bytes)?.0)?;
+        }
+        if version != sheet::version(&install)? {
+            return Err("Installation changed during portrait export".into());
+        }
+        std::fs::write(output.join("game-version.txt"), version)?;
+        return Ok(());
     }
     if args.len() != 3 {
         return Err(USAGE.into());

@@ -1,14 +1,26 @@
+<a class="skip-link" href="#page-content">跳到正文</a>
 <header class="site-header">
-  <a class="brand" href="{{url(path='index.html')}}"><img src="{{url(path='logo.png')}}" width="40" height="40" alt=""> IceXIV <small>DB</small></a>
-  {% if book %}
-  <nav class="book-nav" aria-label="手册目录"><p>手册目录</p>
-    <a href="index.html"{% if page.route.path == 'docs/index.md' %} aria-current="page"{% endif %}>手册首页</a>
-    <a href="game-data-rules.html"{% if page.route.path == 'docs/game-data-rules.md' %} aria-current="page"{% endif %}>01 · 数据判定口径</a>
-    <a href="item-categories.html"{% if page.route.path == 'docs/item-categories.md' %} aria-current="page"{% endif %}>02 · 物品分类清单</a>
-  </nav>{% else %}
-  <nav aria-label="资料导航"><p>资料导航</p><a href="{{url(path='items/index.html')}}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m3 7 9-5 9 5v10l-9 5-9-5zm0 0 9 5 9-5m-9 5v10"/></svg>物品</a></nav>
-  {% endif %}
-  <div class="edition"><span>最终幻想 XIV<br><small>国服资料库</small></span>
-    <a class="book-entry" href="{{url(path='docs/index.html')}}" aria-label="开发手册" title="开发手册"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M12 6C9 4 6 4 2 5v14c4-1 7-1 10 1 3-2 6-2 10-1V5c-4-1-7-1-10 1Zm0 0v14"/></svg></a>
+  <div class="header-inner">
+    <a class="network-brand" href="https://icexiv.github.io/" aria-label="IceXIV 首页">
+      <svg width="26" height="28" viewBox="0 0 30 32" aria-hidden="true">
+        <path d="M15 1 27.5 8.2 15 15.4 2.5 8.2Z" fill="#9dc8ea"/>
+        <path d="m2.5 10.7 11 6.35v13L2.5 23.7Z" fill="#4a85bb"/>
+        <path d="m16.5 17.05 11-6.35v13l-11 6.35Z" fill="#76acd5"/>
+        <path d="m15 5.8 4.3 2.4-4.3 2.5-4.3-2.5Z" fill="#fff" opacity=".8"/>
+      </svg><span>IceXIV</span>
+    </a>
+    <span class="brand-divider" aria-hidden="true"></span>
+    <a class="brand" href="{{url(path='index.html')}}" aria-label="IceXIV DB 首页"><img src="{{url(path='logo.png')}}" width="32" height="32" alt="">DB</a>
+    <nav class="primary-nav" aria-label="主导航">
+      <a href="{{url(path='items/index.html')}}" aria-current="location">物品</a>
+    </nav>
+    <form id="item-lookup" role="search" action="{{page.root}}items/index.html" data-assets="{{page.root}}" data-index="{{page.root}}{{site.data.catalog.assetPath}}/index.json">
+      <label class="lookup-entry">
+        <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+        <input type="search" id="lookup-query" name="q" autocomplete="off" aria-keyshortcuts="Control+k Meta+k" aria-label="搜索全部物品" placeholder="搜索物品名称或 ID">
+        <kbd aria-hidden="true">Ctrl + K</kbd>
+      </label>
+      <div id="lookup-results" aria-label="搜索建议" hidden></div>
+    </form>
   </div>
 </header>

@@ -5,8 +5,8 @@ edition = "2024"
 publish = false
 
 [dependencies]
-# Local development dependency; includes the uncommitted texture implementation.
-icexiv-data = { path = "../../../icexiv-data", features = ["local"] }
+# Pinned by Cargo.lock; no adjacent checkout required.
+icexiv-data = { git = "https://github.com/icexiv/icexiv-data.git", rev = "c365a807a6bcf48b2696823d2145acce26500074", features = ["local"] }
 png = "0.17"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
