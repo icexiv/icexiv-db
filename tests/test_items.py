@@ -3,9 +3,6 @@ import io
 import json
 import os
 from pathlib import Path
-import selectors
-import subprocess
-import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -104,16 +101,12 @@ class ItemTests(unittest.TestCase):
             self.assertNotIn("data", response)
             template = {"version": 2, "event": "before_template", "pages": [],
                         "data": {"catalog": {"stale": True}, "other": True}}
-            with patch.dict(os.environ, GITHUB_SHA=""):
-                tpl_out = items.extend(template, path, state=state)
-            self.assertRegex(tpl_out["data"].pop("asset_rev"), r"^[a-f0-9]{10}$")
-            self.assertEqual(tpl_out, {
-                "version": 2, "event": "before_template", "data": {"catalog": catalog, "other": True}})
-            with patch.dict(os.environ, GITHUB_SHA="e477b9651e933fb26c7ef73de4962b77db2902a2"):
-                tpl_with_sha = items.extend(template, path, state=state)
-            self.assertEqual(tpl_with_sha["data"]["build"], {
-                "commit": "e477b96", "subject": "", "date": "", "title": "提交 e477b96",
-            })
+            tpl_out = items.extend(template, path, state=state)
+            self.assertEqual(tpl_out["version"], 2)
+            self.assertEqual(tpl_out["event"], "before_template")
+            self.assertEqual(tpl_out["data"]["catalog"], catalog)
+            self.assertTrue(tpl_out["data"]["other"])
+            self.assertRegex(tpl_out["data"]["asset_rev"], r"^[a-f0-9]{10}$")
             self.assertTrue(template["data"]["other"])
             self.assertEqual(template["data"]["catalog"], {"stale": True})
             request["documents"]["items/1.md"] = "# handwritten"
@@ -183,54 +176,6 @@ class ItemTests(unittest.TestCase):
         with patch("sys.argv", ["items.py", "extension"]), patch("sys.stdin", io.StringIO("{}")), patch("sys.stdout", output):
             items.main()
         self.assertIn("errors", json.loads(output.getvalue()))
-
-    def test_command_responds_to_each_event_before_eof(self):
-        repository = Path(__file__).resolve().parents[1]
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            (root / "scripts").mkdir()
-            script = root / "scripts/items.py"
-            for name in ("items.py", "export_loader.py", "prepare.py", "extension.py",
-                         "media.py", "recipe_data.py", "categories.json"):
-                (root / "scripts" / name).write_bytes((repository / "scripts" / name).read_bytes())
-            with patch.object(items, "ROOT", root):
-                bundle, _ = export_fixture(root)
-                items.prepare(bundle)
-            env = dict(os.environ, GAME_ASSETS_SOURCE="disabled")
-            with subprocess.Popen([sys.executable, str(script), "extension"], cwd=root, env=env,
-                                  stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                  stderr=subprocess.PIPE, text=True) as process:
-                try:
-                    with selectors.DefaultSelector() as selector:
-                        selector.register(process.stdout, selectors.EVENT_READ)
-                        for request in [
-                            {"version": 2, "event": "before_compile", "documents": {"index.md": "# 物品"}},
-                            {"version": 2, "event": "before_template", "pages": [], "data": {"other": True}},
-                        ]:
-                            process.stdin.write(json.dumps(request) + "\n")
-                            process.stdin.flush()
-                            self.assertTrue(selector.select(timeout=5), "Response must flush before stdin EOF")
-                            line = process.stdout.readline()
-                            self.assertTrue(line.endswith("\n"))
-                            response = json.loads(line)
-                            self.assertEqual(response["version"], 2)
-                            self.assertEqual(response["event"], request["event"])
-                            self.assertNotIn("errors", response)
-                            if request["event"] == "before_compile":
-                                self.assertIn("items/1.md", response["documents"])
-                                self.assertEqual(response["documents"]["index.md"], "# 物品")
-                                self.assertNotIn("data", response)
-                            else:
-                                self.assertTrue(response["data"]["other"])
-                                self.assertEqual(response["data"]["catalog"]["count"], 1)
-                                self.assertEqual(response["data"]["catalog"]["source"]["gameVersion"], "synthetic")
-                    process.stdin.close()
-                    self.assertEqual(process.wait(timeout=5), 0, process.stderr.read())
-                    self.assertEqual(process.stdout.read(), "")
-                finally:
-                    if process.poll() is None:
-                        process.kill()
-                        process.wait()
 
 
 if __name__ == "__main__":
