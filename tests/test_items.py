@@ -104,10 +104,16 @@ class ItemTests(unittest.TestCase):
             self.assertNotIn("data", response)
             template = {"version": 2, "event": "before_template", "pages": [],
                         "data": {"catalog": {"stale": True}, "other": True}}
-            tpl_out = items.extend(template, path, state=state)
+            with patch.dict(os.environ, GITHUB_SHA=""):
+                tpl_out = items.extend(template, path, state=state)
             self.assertRegex(tpl_out["data"].pop("asset_rev"), r"^[a-f0-9]{10}$")
             self.assertEqual(tpl_out, {
                 "version": 2, "event": "before_template", "data": {"catalog": catalog, "other": True}})
+            with patch.dict(os.environ, GITHUB_SHA="e477b9651e933fb26c7ef73de4962b77db2902a2"):
+                tpl_with_sha = items.extend(template, path, state=state)
+            self.assertEqual(tpl_with_sha["data"]["build"], {
+                "commit": "e477b96", "subject": "", "date": "", "title": "提交 e477b96",
+            })
             self.assertTrue(template["data"]["other"])
             self.assertEqual(template["data"]["catalog"], {"stale": True})
             request["documents"]["items/1.md"] = "# handwritten"
