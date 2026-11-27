@@ -81,7 +81,7 @@ jobs:
           python3 scripts/package_site.py notist-output/icexiv-db dist/pages dist/domestic
           python3 scripts/check_site.py dist/pages
           python3 scripts/check_site.py dist/domestic
-          tar -czf domestic.tar.gz -C dist/domestic .
+          tar -cf - -C dist/domestic . | zstd -10 --long=27 -T0 -o domestic.tar.zst
 
       - uses: actions/upload-pages-artifact@v3
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
@@ -92,7 +92,7 @@ jobs:
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         with:
           name: domestic-site
-          path: domestic.tar.gz
+          path: domestic.tar.zst
           retention-days: 7
 
   pages:
@@ -124,16 +124,29 @@ jobs:
     env:
       DEPLOY_HOST: ${{ vars.DEPLOY_HOST || 'deploy@82.156.196.54' }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts/sync_tos.py
+          sparse-checkout-cone-mode: false
       - uses: actions/download-artifact@v4
         with:
           name: domestic-site
-      - name: Deploy to db.icexiv.top
+      - name: Deploy to db.icexiv.top via TOS relay
         env:
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          TOS_BUCKET: icexiv
+          TOS_REGION: cn-beijing
+          TOS_ACCESS_KEY: ${{ secrets.TOS_ACCESS_KEY }}
+          TOS_SECRET_KEY: ${{ secrets.TOS_SECRET_KEY }}
         run: |
           install -m 700 -d ~/.ssh
           umask 077
           printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
           printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
-          ssh -o BatchMode=yes "$DEPLOY_HOST" < domestic.tar.gz
+          SHA256="$(sha256sum domestic.tar.zst | awk '{print $1}')"
+          FILENAME="db-site-${GITHUB_RUN_ID}-${SHA256:0:12}.tar.zst"
+          KEY="_deploy/$FILENAME"
+          python3 scripts/sync_tos.py --put domestic.tar.zst "$KEY"
+          trap 'python3 scripts/sync_tos.py --delete "$KEY" || true' EXIT
+          printf '%s %s\n' "$FILENAME" "$SHA256" | ssh -o BatchMode=yes "$DEPLOY_HOST"

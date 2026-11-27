@@ -425,6 +425,8 @@ def main():
                         help="Override prefixes to gzip in memory (repeatable; default: models/)")
     parser.add_argument("--no-gzip", action="store_true", help="Disable gzip compression for all files")
     parser.add_argument("--only", nargs="+", help="Upload specific relative paths under game-assets/ (e.g. models/manifests/1.json)")
+    parser.add_argument("--put", nargs=2, metavar=("LOCAL_FILE", "REMOTE_KEY"), help="Upload one raw file directly to REMOTE_KEY")
+    parser.add_argument("--delete", metavar="REMOTE_KEY", help="Delete one object REMOTE_KEY from the bucket")
     parser.add_argument("--limit", type=int, default=None, help="Limit number of files processed")
     parser.add_argument("--jobs", type=int, default=16)
     parser.add_argument("--dry-run", action="store_true", help="Compute uploads without writing to TOS")
@@ -461,6 +463,24 @@ def main():
             secret_key=secret_key,
             endpoint=endpoint,
         )
+
+    if args.put:
+        local_path, remote_key = Path(args.put[0]), args.put[1].lstrip("/")
+        payload = local_path.read_bytes()
+        client.request(
+            "PUT",
+            remote_key,
+            body=payload,
+            extra_headers={"Content-Type": "application/octet-stream", "Cache-Control": "no-store"},
+        )
+        print(f"Uploaded {local_path} ({_fmt_bytes(len(payload))}) -> s3://{client.bucket}/{remote_key}")
+        return
+
+    if args.delete:
+        remote_key = args.delete.lstrip("/")
+        client.request("DELETE", remote_key)
+        print(f"Deleted s3://{client.bucket}/{remote_key}")
+        return
 
     sync(
         args.assets_dir,
