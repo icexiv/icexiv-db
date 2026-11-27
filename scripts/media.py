@@ -23,7 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PORT = 8015
 ASSET_KINDS = ("icons", "portraits", "orchestrion", "models")
 
-TOS_ORIGIN = "https://icexiv.tos-cn-beijing.volces.com"
+CDN_ORIGIN = "https://cdn.icexiv.top"
 
 # Named asset profiles selectable via `GAME_ASSETS_SOURCE=<name>` (or pass an `https://...` URL directly).
 # Any individual kind can also be overridden via `GAME_ASSETS_{ICONS,PORTRAITS,ORCHESTRION,MODELS}_BASE`.
@@ -41,10 +41,10 @@ PROFILES = {
         "models": f"http://127.0.0.1:{PORT}/models",
     },
     "prod": {
-        "icons": f"{TOS_ORIGIN}/icons",
-        "portraits": f"{TOS_ORIGIN}/portraits",
-        "orchestrion": f"{TOS_ORIGIN}/orchestrion",
-        "models": f"{TOS_ORIGIN}/models",
+        "icons": f"{CDN_ORIGIN}/icons",
+        "portraits": f"{CDN_ORIGIN}/portraits",
+        "orchestrion": f"{CDN_ORIGIN}/orchestrion",
+        "models": f"{CDN_ORIGIN}/models",
     },
 }
 
