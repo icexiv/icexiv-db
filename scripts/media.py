@@ -48,7 +48,14 @@ PROFILES = {
     },
 }
 
-SDK_FILES = ("component.js", "icexiv_renderer.js", "icexiv_renderer_bg.wasm")
+SDK_FILES = (
+    "component.js",
+    "icexiv-viewport.js",
+    "icexiv-controls.js",
+    "icexiv-timeline.js",
+    "icexiv_renderer.js",
+    "icexiv_renderer_bg.wasm",
+)
 EFFECT_SDK = ("effects/icexiv_effects.js", "effects/icexiv_effects_bg.wasm", "effects/effect-worker.js")
 DISABLED_VALUES = {"disabled", "none", "off", "false", "0"}
 KEY_PATTERN = re.compile(r"(icons|portraits|orchestrion|models)/[A-Za-z0-9_./-]+")

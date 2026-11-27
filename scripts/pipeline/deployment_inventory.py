@@ -16,6 +16,12 @@ def inventory():
     action_lib = ROOT / "sources/action-library.json"
     if action_lib.is_file():
         objects.update(json.loads(action_lib.read_bytes()).get("objects", []))
+    customize_lib = ROOT / "sources/customize-library.json"
+    if customize_lib.is_file():
+        objects.update(json.loads(customize_lib.read_bytes()).get("objects", []))
+    chocobo = ROOT / "game-assets/models/actions/actors/chocobo.json"
+    if chocobo.is_file():
+        objects.update(json.loads(chocobo.read_bytes()).get("files", {}).values())
     origins = {
         "game-assets": "CDN", "static": "Notist 静态输入", "ops/cn": "国内包附加",
         "assets": "设计源文件",

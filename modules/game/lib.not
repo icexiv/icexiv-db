@@ -7,3 +7,4 @@ fn gear_group(key: Int, item: String) -> Block;
 fn orchestrion_player(audio: String) -> Block;
 fn model_viewer(manifest: String) -> Block;
 fn action_viewer(manifest: String) -> Block;
+fn customize_viewer(manifest: String) -> Block;

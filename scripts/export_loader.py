@@ -27,6 +27,7 @@ SNAPSHOT_FILES = (
     "sources/reference.json",
     "sources/model-library.json",
     "sources/action-library.json",
+    "sources/customize-library.json",
 )
 
 

@@ -192,13 +192,23 @@ fn item(source: String, index: Int) -> Block {
     };
 
     let action_url = assets.action_manifest(id);
-    if action_url != "" && record.get("hasAction").as_bool(false) {
+    let with_action = if action_url != "" && record.get("hasAction").as_bool(false) {
         [
             #with_model
             #game.action_viewer(action_url)
         ]
     } else {
         with_model
+    };
+
+    let customize_url = assets.customize_manifest(id);
+    if customize_url != "" && record.get("hasCustomize").as_bool(false) {
+        [
+            #with_action
+            #game.customize_viewer(customize_url)
+        ]
+    } else {
+        with_action
     }
 }
 

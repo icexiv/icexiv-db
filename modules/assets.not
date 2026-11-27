@@ -46,3 +46,12 @@ fn action_manifest(item_id: String) -> String {
         base + "/actions/" + item_id + ".json"
     }
 }
+
+fn customize_manifest(item_id: String) -> String {
+    let base = kind_base("models");
+    if item_id == "" || base == "" {
+        ""
+    } else {
+        base + "/customize/" + item_id + ".json"
+    }
+}

@@ -22,7 +22,54 @@ export function createObjectLoader() {
   };
 }
 
-export function mountModelPreview(host) {
+const SLOT_CATEGORY = {met: 3, top: 4, glv: 5, dwn: 7, sho: 8, ear: 9, nek: 10, wrs: 11, rir: 12, ril: 12};
+const RACES = [[1, '人族'], [2, '精灵族'], [3, '拉拉菲尔族'], [4, '猫魅族'], [5, '鲁加族'], [6, '敖龙族'], [7, '硌狮族']];
+
+function materialVariant(part) {
+  for (const p of Object.values(part?.materials ?? {})) {
+    const m = /\/material\/v(\d{4})\//.exec(p);
+    if (m) return Number(m[1]);
+  }
+  return 1;
+}
+
+function tryOnInfo(manifest) {
+  const parts = manifest.parts ?? [manifest];
+  if (manifest.kind === 'barding') {
+    const spec = {kind: 'chocobo', headId: 1, bodyId: 1, feetId: 1, headVariant: 1, bodyVariant: 1, feetVariant: 1};
+    let found = false;
+    for (const p of parts) {
+      const m = /chara\/demihuman\/d0001\/obj\/equipment\/e(\d{4})\/model\/d0001e\d{4}_(met|top|sho)\.mdl$/.exec(p.model ?? '');
+      if (!m) continue;
+      found = true;
+      const id = Number(m[1]), v = materialVariant(p);
+      if (m[2] === 'met') { spec.headId = id; spec.headVariant = v; }
+      else if (m[2] === 'top') { spec.bodyId = id; spec.bodyVariant = v; }
+      else if (m[2] === 'sho') { spec.feetId = id; spec.feetVariant = v; }
+    }
+    return found ? {host: 'chocobo', spec} : null;
+  }
+  if (manifest.kind === 'armor' || manifest.kind === 'accessory') {
+    const p = parts[manifest.defaultPart ?? 0];
+    const m = /chara\/(?:equipment|accessory)\/[ea](\d{4})\/model\/c\d{4}[ea]\d{4}_(met|top|glv|dwn|sho|ear|nek|wrs|rir|ril)\.mdl$/.exec(p?.model ?? '');
+    if (!m || !SLOT_CATEGORY[m[2]]) return null;
+    const id = BigInt(Number(m[1])), v = BigInt(materialVariant(p));
+    const modelMain = String((v << 16n) | id);
+    const preset = ['met', 'ear', 'nek'].includes(m[2]) ? 'head' : 'full';
+    return {host: 'actor', equipment: [{modelMain, equipSlotCategory: SLOT_CATEGORY[m[2]], itemId: 0, stainIds: [0, 0]}], preset};
+  }
+  if (manifest.kind === 'weapon' || manifest.kind === 'heldProp') {
+    const p = parts[manifest.defaultPart ?? 0];
+    const m = /chara\/weapon\/w(\d{4})\/obj\/body\/b(\d{4})\/model\//.exec(p?.model ?? '');
+    if (!m) return null;
+    const w = BigInt(Number(m[1])), b = BigInt(Number(m[2])), v = BigInt(materialVariant(p));
+    const modelMain = String((v << 32n) | (b << 16n) | w);
+    return {host: 'actor', prop: {modelMain, bone: 'n_buki_r'}, preset: 'full'};
+  }
+  return null;
+}
+
+export function mountModelPreview(host, assets = null) {
   const button = document.createElement('button');
   button.type = 'button';
   button.textContent = '查看 3D 模型';
@@ -107,11 +154,15 @@ export function mountModelPreview(host) {
       signal.throwIfAborted();
 
       const parts = manifest.parts ?? [manifest];
-      let stage, playing = false, partRequest;
-      const replaceStage = () => {
+      const tryOn = tryOnInfo(manifest);
+      const actors = assets?.actionActors || {};
+      const canTryOn = Boolean(tryOn && (tryOn.host === 'chocobo' ? resolveAsset('models/actions/actors/chocobo.json') : Object.keys(actors).length > 0));
+      const viewportUrl = new URL('./model-sdk/icexiv-viewport.js', import.meta.url);
+      let stage, playing = false, partRequest, mode = 'standalone';
+      const replaceStage = (tag = 'icexiv-equipment-canvas') => {
         stage?.remove();
-        stage = document.createElement('icexiv-equipment-canvas');
-        stage.setAttribute('framed', '');
+        stage = document.createElement(tag);
+        if (tag === 'icexiv-equipment-canvas') stage.setAttribute('framed', '');
         meter.after(stage);
         return stage;
       };
@@ -272,6 +323,137 @@ export function mountModelPreview(host) {
           catch (err) { fail(err); }
           finally { if (!signal.aborted) select.disabled = false; }
         };
+      }
+      if (canTryOn) {
+        const modeBox = document.createElement('div');
+        modeBox.className = 'preview-mode';
+        modeBox.setAttribute('role', 'group');
+        modeBox.setAttribute('aria-label', '预览模式');
+        modeBox.innerHTML = `<button type="button" data-mode="standalone" aria-pressed="true">单件</button><button type="button" data-mode="tryon" aria-pressed="false">试穿</button>`;
+        const modeBtns = [...modeBox.querySelectorAll('button')];
+        const tryOnTools = document.createElement('div');
+        tryOnTools.className = 'preview-head-tools';
+        tryOnTools.hidden = true;
+        let raceSelect, genderButtons = [], genderValue = 1;
+        const actorCache = new Map();
+        const actorFor = key => {
+          if (!actorCache.has(key)) {
+            actorCache.set(key, fetch(resolveAsset(actors[key]), {signal}).then(r => {
+              if (!r.ok) throw Error(`角色清单 HTTP ${r.status}`);
+              return r.json();
+            }));
+          }
+          return actorCache.get(key);
+        };
+        if (tryOn.host === 'actor') {
+          const availRaces = RACES.filter(([id]) => actors[`${id}-0`] || actors[`${id}-1`]);
+          const [defRace, defGender] = (assets?.actionDefault || '6-1').split('-');
+          genderValue = Number(defGender);
+          raceSelect = document.createElement('select');
+          raceSelect.className = 'action-race';
+          raceSelect.setAttribute('aria-label', '试穿种族');
+          for (const [id, label] of availRaces) raceSelect.add(new Option(label, id));
+          raceSelect.value = availRaces.some(([id]) => String(id) === defRace) ? defRace : String(availRaces[0]?.[0]);
+          const gBox = document.createElement('div');
+          gBox.className = 'action-gender';
+          gBox.setAttribute('role', 'group');
+          gBox.setAttribute('aria-label', '试穿性别');
+          gBox.innerHTML = `<button type="button" data-gender="0" aria-pressed="false">男</button><button type="button" data-gender="1" aria-pressed="false">女</button>`;
+          genderButtons = [...gBox.querySelectorAll('button')];
+          const pBox = document.createElement('div');
+          pBox.className = 'preview-camera-presets';
+          pBox.setAttribute('role', 'group');
+          pBox.setAttribute('aria-label', '镜头预设');
+          pBox.innerHTML = `<button type="button" data-preset="full" aria-pressed="${tryOn.preset === 'full'}">全身</button><button type="button" data-preset="upper" aria-pressed="false">半身</button><button type="button" data-preset="head" aria-pressed="${tryOn.preset === 'head'}">头部</button>`;
+          const pBtns = [...pBox.querySelectorAll('button')];
+          for (const b of pBtns) {
+            b.onclick = async () => {
+              for (const x of pBtns) x.setAttribute('aria-pressed', String(x === b));
+              if (mode === 'tryon' && stage?.setCameraPreset) await stage.setCameraPreset(b.dataset.preset);
+            };
+          }
+          tryOnTools.append(raceSelect, gBox, pBox);
+        }
+        const syncGender = () => {
+          if (!raceSelect) return;
+          const opts = [0, 1].filter(g => actors[`${raceSelect.value}-${g}`]);
+          if (!opts.includes(genderValue)) genderValue = opts[0] ?? 0;
+          for (const btn of genderButtons) {
+            const v = Number(btn.dataset.gender);
+            btn.setAttribute('aria-pressed', String(v === genderValue));
+            btn.disabled = !opts.includes(v);
+          }
+        };
+        syncGender();
+        const loadTryOn = async () => {
+          partRequest?.abort();
+          partRequest = new AbortController();
+          const pSig = AbortSignal.any([signal, partRequest.signal]);
+          animToggle.hidden = animSeek.hidden = true;
+          if (select) select.hidden = true;
+          tryOnTools.hidden = false;
+          progress('engine');
+          await import(viewportUrl);
+          pSig.throwIfAborted();
+          const vp = replaceStage('icexiv-viewport');
+          vp.addEventListener('loadprogress', ({detail}) => {
+            if (!pSig.aborted) progress(detail.phase, detail.done, detail.total);
+          });
+          vp.addEventListener('error', ({detail}) => {
+            if (!pSig.aborted) status.textContent = `试穿加载失败：${detail?.message ?? detail}`;
+          });
+          await vp.openScene();
+          pSig.throwIfAborted();
+          const readObj = (path, sha) => loader.read(path, sha, pSig);
+          if (tryOn.host === 'chocobo') {
+            progress('model-files');
+            const choco = await fetch(resolveAsset('models/actions/actors/chocobo.json'), {signal: pSig}).then(r => {
+              if (!r.ok) throw Error(`陆行鸟模型 HTTP ${r.status}`);
+              return r.json();
+            });
+            const merged = {...choco.files, ...manifest.files};
+            await vp.setStandalone(tryOn.spec, merged, readObj);
+            progress(null);
+            status.textContent = '陆行鸟试穿预览，拖动旋转视角。';
+          } else {
+            syncGender();
+            const key = `${raceSelect.value}-${genderValue}`;
+            progress('actor-files');
+            const actor = await actorFor(key);
+            await vp.setCameraPreset(tryOn.preset || 'full');
+            await vp.setActorBundle(actor, readObj, tryOn.equipment ? {equipment: tryOn.equipment, files: manifest.files} : {});
+            if (tryOn.prop) {
+              await vp.addProp('tryon-weapon', tryOn.prop.modelMain, tryOn.prop.bone, manifest.files, readObj);
+            }
+            progress(null);
+            status.textContent = '角色试穿预览，可切换种族、性别与镜头预设。';
+          }
+        };
+        if (raceSelect) {
+          raceSelect.onchange = () => { if (mode === 'tryon') loadTryOn().catch(e => { progress(null); if (!signal.aborted) status.textContent = `试穿失败：${e.message}`; }); };
+          for (const btn of genderButtons) {
+            btn.onclick = () => {
+              if (btn.disabled) return;
+              genderValue = Number(btn.dataset.gender);
+              if (mode === 'tryon') loadTryOn().catch(e => { progress(null); if (!signal.aborted) status.textContent = `试穿失败：${e.message}`; });
+            };
+          }
+        }
+        for (const btn of modeBtns) {
+          btn.onclick = async () => {
+            if (btn.dataset.mode === mode) return;
+            mode = btn.dataset.mode;
+            for (const b of modeBtns) b.setAttribute('aria-pressed', String(b === btn));
+            if (mode === 'tryon') {
+              await loadTryOn().catch(e => { progress(null); if (!signal.aborted) status.textContent = `试穿失败：${e.message}`; });
+            } else {
+              tryOnTools.hidden = true;
+              if (select) select.hidden = false;
+              await load(parts[select ? Number(select.value) : (manifest.defaultPart ?? 0)]);
+            }
+          };
+        }
+        closeBtn.before(modeBox, tryOnTools);
       }
       const details = document.createElement('details');
       const summary = document.createElement('summary');

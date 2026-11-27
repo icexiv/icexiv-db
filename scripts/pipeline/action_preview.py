@@ -98,6 +98,69 @@ def host_bundle(renderer, game):
                           stdin=f"{HIDDEN_HOST}\n"))
 
 
+def pick_timelines(timelines):
+    """Select full-body start/loop/end sequence, skipping upper-body (u_*) and additive (add_*)."""
+    full = []
+    for row, key in timelines:
+        leaf = key.rsplit("/", 1)[-1]
+        if leaf.startswith(("u_", "add_")):
+            continue
+        full.append((row, key, leaf))
+    if not full:
+        return [timelines[0][0]]
+    # Prefer explicit start -> loop -> end ordering if present.
+    starts = [r for r, k, _ in full if k.endswith("_start")]
+    loops = [r for r, k, _ in full if k.endswith("_loop")]
+    ends = [r for r, k, _ in full if k.endswith("_end")]
+    seq = []
+    if starts:
+        seq.append(starts[0])
+    if loops:
+        seq.append(loops[0])
+    if ends:
+        seq.append(ends[0])
+    if seq:
+        return seq
+    return [full[0][0]]
+
+
+def preview_for(bundle):
+    seen_targets = set()
+    bindings = []
+    # Prefer full VFX tracks ([13, 0, 0]) over party/simplified tracks ([12, 0, 0]).
+    has_full = any(
+        [13, 0, 0] in (link.get("conditions") or [])
+        for eff in bundle.get("effects", [])
+        for link in eff.get("chain", [])
+    )
+    enabled_tracks = []
+    seen_tracks = set()
+    for eff in bundle.get("effects", []):
+        for target in eff.get("targets", []):
+            key = (target["origin"], target["kind"], target["id"])
+            if key not in seen_targets:
+                seen_targets.add(key)
+                bindings.append({"target": target, "position": [0, 0, 0]})
+        chain = eff.get("chain", [])
+        is_simplified = any(
+            [12, 0, 0] in (link.get("conditions") or [])
+            for link in chain
+        )
+        if has_full and is_simplified:
+            continue
+        for link in chain:
+            if link.get("conditions"):
+                tk = (link["tmb"], link["track"])
+                if tk not in seen_tracks:
+                    seen_tracks.add(tk)
+                    enabled_tracks.append([tk[0], tk[1]])
+    return {
+        "units_per_second": 30,
+        "bindings": bindings,
+        "enabled_tracks": enabled_tracks,
+    }
+
+
 def main(game, renderer, limit=None, actors_only=False):
     from scripts.pipeline import bundle
     actions = bundle.read(bundle.DATAMINING).get("actions", {})
@@ -118,24 +181,27 @@ def main(game, renderer, limit=None, actors_only=False):
             tmp.replace(path)
             actors[name] = f"models/actions/actors/{name}.json"
             objects |= collect(actor)
-    host = host_bundle(renderer, game)
-    objects |= collect(host)
     previous = (ROOT / "sources/action-library.json")
-    items = json.loads(previous.read_bytes())["items"] if actors_only and previous.is_file() else {}
-    library = {"itemsSha256": actions["itemsSha256"], "items": items, "actors": actors,
+    prev_data = json.loads(previous.read_bytes()) if previous.is_file() else {}
+    items = prev_data.get("items", {}) if actors_only else {}
+    items_sha = actions.get("itemsSha256") or prev_data.get("itemsSha256") or hashlib.sha256(
+        json.dumps(actions["items"], sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+    library = {"itemsSha256": items_sha, "items": items, "actors": actors,
                "races": [{"id": race, "label": label, "genders": list(genders)} for race, label, _, genders in RACES],
                "default": list(DEFAULT)}
     tool = renderer / "effects/tools/target/release/icexiv-action"
     written = 0
     for item, entry in ({} if actors_only else actions["items"]).items():
         timelines = entry["timelines"]
-        loop_id = next((row for row, key in timelines if key.endswith("_loop")), timelines[-1][0])
+        seq_ids = pick_timelines(timelines)
         bundle = json.loads(run([str(tool), "--pack", str(game / "game/sqpack"),
-                                 "--timeline", loop_id, str(OBJECTS), "--actor", "101"]))
+                                 "--timelines", ",".join(str(x) for x in seq_ids),
+                                 str(OBJECTS), "--actor", "101"]))
         if bundle["unresolvedClips"] or not bundle["clips"]:
             continue
         objects |= collect(bundle)
-        manifest = dict(objects="../objects/sha256/", host=host, bundle=bundle, preview=PREVIEW)
+        manifest = dict(objects="../objects/sha256/", bundle=bundle, preview=preview_for(bundle))
         path = MANIFESTS / f"{item}.json"
         tmp = path.with_suffix(".tmp")
         tmp.write_text(json.dumps(manifest, separators=(",", ":")))

@@ -1,4 +1,4 @@
-// Emote previews: one action bundle, a hidden weapon host and switchable actors.
+// Emote previews: unified WebGPU scene (<icexiv-viewport>) + Ranim-style <icexiv-controls>.
 import {resolveAsset} from './assets.js';
 import {createObjectLoader} from './model-viewer.js';
 
@@ -11,15 +11,14 @@ export function mountActionPreview(host, assets) {
   host.append(button, status);
   host.hidden = false;
 
-  const sdkUrl = new URL('./model-sdk/icexiv_renderer.js', import.meta.url);
+  const viewportUrl = new URL('./model-sdk/icexiv-viewport.js', import.meta.url);
+  const controlsUrl = new URL('./model-sdk/icexiv-controls.js', import.meta.url);
   let session;
   let controls;
-  let timer;
 
   function close() {
     session?.abort();
     session = undefined;
-    clearTimeout(timer);
     controls?.remove();
     controls = undefined;
     button.disabled = false;
@@ -50,7 +49,11 @@ export function mountActionPreview(host, assets) {
       <div class="action-gender" role="group" aria-label="预览性别">
       <button type="button" data-gender="0" aria-pressed="false">男</button>
       <button type="button" data-gender="1" aria-pressed="false">女</button></div>
-      <button type="button" class="preview-replay">重播动作</button>
+      <div class="preview-camera-presets" role="group" aria-label="镜头预设">
+      <button type="button" data-preset="full" aria-pressed="true">全身</button>
+      <button type="button" data-preset="upper" aria-pressed="false">半身</button>
+      <button type="button" data-preset="head" aria-pressed="false">头部</button></div>
+      <button type="button" class="preview-replay">重播</button>
       <button type="button" class="preview-close" aria-label="关闭动作">关闭 <span aria-hidden="true">×</span></button>
       </div></div><div class="preview-stage"><label class="preview-progress"><span></span><progress></progress></label></div></section>`;
     const stageBox = controls.querySelector('.preview-stage');
@@ -58,7 +61,7 @@ export function mountActionPreview(host, assets) {
     const meterText = meter.querySelector('span');
     const meterBar = meter.querySelector('progress');
     const phases = {
-      manifest: '读取动作清单', engine: '加载渲染器', 'model-files': '加载宿主文件',
+      manifest: '读取动作清单', engine: '加载渲染器', 'model-files': '加载模型文件',
       'actor-files': '加载角色文件', 'action-files': '加载动作文件',
       'unpack-model': '装配模型', 'unpack-effect': '装配特效', 'first-frame': '绘制首帧',
       materials: '加载材质', geometry: '读取模型几何',
@@ -73,6 +76,7 @@ export function mountActionPreview(host, assets) {
     const raceSelect = controls.querySelector('.action-race');
     const genderBox = controls.querySelector('.action-gender');
     const genderButtons = [...genderBox.querySelectorAll('button')];
+    const presetButtons = [...controls.querySelectorAll('.preview-camera-presets button')];
     let genderValue = Number(defaultGender);
     const replay = controls.querySelector('.preview-replay');
     const closeBtn = controls.querySelector('.preview-close');
@@ -81,7 +85,7 @@ export function mountActionPreview(host, assets) {
     closeBtn.onclick = () => { close(); button.focus({preventScroll: true}); };
     closeBtn.focus({preventScroll: true});
 
-    let stage, current;
+    let stage, ctrlBar, current;
     try {
       if (!navigator.gpu) throw Error('浏览器不支持 WebGPU');
       progress('manifest');
@@ -104,32 +108,22 @@ export function mountActionPreview(host, assets) {
         }
         return actorCache.get(key);
       };
-      await Promise.all([import(sdkUrl), import(new URL('./component.js', sdkUrl))]);
+      progress('engine');
+      await Promise.all([import(viewportUrl), import(controlsUrl)]);
       signal.throwIfAborted();
 
-      stage = document.createElement('icexiv-equipment-canvas');
-      stage.setAttribute('framed', '');
+      stage = document.createElement('icexiv-viewport');
       stage.addEventListener('loadprogress', ({detail}) => progress(detail.phase, detail.done, detail.total));
-      stageBox.append(stage);
-      const play = () => stage.playActionBundle(manifest.bundle, manifest.preview, read,
-        {target: 'actor', gap: 'rest'});
-      const units = manifest.preview.units_per_second || 30;
-      const duration = Math.max(0.8, ...manifest.bundle.clips.map(clip =>
-        Math.max(0, ...clip.chain.map(link => link.duration)) / units + 0.15));
-      const loop = () => {
-        timer = setTimeout(() => {
-          if (signal.aborted) return;
-          stage.stopAction().then(play).then(loop, () => loop());
-        }, duration * 1000);
-      };
+      stage.addEventListener('error', ({detail}) => fail(detail instanceof Error ? detail : Error(String(detail))));
+      ctrlBar = document.createElement('icexiv-controls');
+      ctrlBar.target = stage;
+      stageBox.append(stage, ctrlBar);
+
       const start = async key => {
-        clearTimeout(timer);
         progress('actor-files');
         const actor = await actorFor(key);
-        await stage.stopAction();
         await stage.setActorBundle(actor, read);
-        await play();
-        loop();
+        await stage.playActionBundle(manifest.bundle, manifest.preview, read);
         current = key;
       };
       const gendersFor = id => [0, 1].filter(g => actors[`${id}-${g}`]);
@@ -151,7 +145,7 @@ export function mountActionPreview(host, assets) {
         try {
           await start(key);
           progress(null);
-          status.textContent = '循环播放，可拖动视角或重播。';
+          status.textContent = '循环播放，可拖动视角或展开时间轴查看轨道。';
         } catch (error) {
           progress(null);
           if (!signal.aborted) status.textContent = ` 无法切换角色：${error.message}`;
@@ -160,15 +154,13 @@ export function mountActionPreview(host, assets) {
       raceSelect.value = races.some(([id]) => String(id) === defaultRace) ? defaultRace : String(races[0]?.[0]);
       genderValue = Number(defaultGender);
       syncGender();
-      progress('engine');
-      await stage.openWeapon(manifest.host, read);
+      await stage.openScene();
       signal.throwIfAborted();
-      await stage.setOwnerVisible(false);
+      await stage.setCameraPreset('full');
       await start(`${raceSelect.value}-${genderValue}`);
       signal.throwIfAborted();
       progress(null);
-      stage.show();
-      stage.setZoom(0.65);
+
       raceSelect.onchange = pickActor;
       for (const btn of genderButtons) {
         btn.onclick = () => {
@@ -177,17 +169,17 @@ export function mountActionPreview(host, assets) {
           pickActor();
         };
       }
-      replay.onclick = async () => {
-        clearTimeout(timer);
-        try {
-          await stage.stopAction();
-          await play();
-          loop();
-        } catch (error) {
-          if (!signal.aborted) status.textContent = ` 重播失败：${error.message}`;
-        }
+      for (const btn of presetButtons) {
+        btn.onclick = async () => {
+          for (const b of presetButtons) b.setAttribute('aria-pressed', String(b === btn));
+          await stage.setCameraPreset(btn.dataset.preset);
+        };
+      }
+      replay.onclick = () => {
+        stage.seek(0);
+        stage.play();
       };
-      status.textContent = '循环播放，可拖动视角或重播。';
+      status.textContent = '循环播放，可拖动视角或展开时间轴查看轨道。';
     } catch (err) { progress(null); fail(err); }
     finally { if (!signal.aborted) button.disabled = false; }
   }

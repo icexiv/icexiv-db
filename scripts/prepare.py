@@ -95,6 +95,7 @@ def prepare(input_path, *, root=ROOT, emit_json=write_json):
     reference = _read(root, "sources/reference.json")
     models = _read(root, "sources/model-library.json")
     actions = _read(root, "sources/action-library.json")
+    customizes = _read(root, "sources/customize-library.json")
     if batch.get("itemsSha256") not in (None, items_sha):
         print("note: sources/datamining.json is from another Item batch; using it as-is")
 
@@ -114,6 +115,7 @@ def prepare(input_path, *, root=ROOT, emit_json=write_json):
     music_ids = {int(i) for i in batch.get("orchestrion", {}).get("tracks", {})}
     model_ids = {int(i) for i in models.get("items", {})}
     action_ids = {int(i) for i in actions.get("items", {})}
+    customize_ids = {int(i) for i in customizes.get("items", {})}
 
     by_id = {i["id"]: i for i in records}
     relations_by_item, relation_tables = _build_relations(records, by_id, families, peers, versions)
@@ -159,7 +161,7 @@ def prepare(input_path, *, root=ROOT, emit_json=write_json):
             details.append(_item_record(
                 item, gear, gear_snapshot, versions, counts,
                 kits, previews, relations_by_item,
-                music_ids, model_ids, action_ids,
+                music_ids, model_ids, action_ids, customize_ids,
             ))
         emit_json(private / "items" / f"{chunk}.json", details)
 
@@ -174,7 +176,7 @@ def prepare(input_path, *, root=ROOT, emit_json=write_json):
 
 
 def _item_record(item, gear, gear_snapshot, versions, counts, kits, previews,
-                 relations, music_ids, model_ids, action_ids):
+                 relations, music_ids, model_ids, action_ids, customize_ids):
     i = item["id"]
     extra = gear.get(i)
     item_counts = counts.get(i, {})
@@ -213,4 +215,5 @@ def _item_record(item, gear, gear_snapshot, versions, counts, kits, previews,
         "hasOrchestrion": i in music_ids,
         "hasModel": i in model_ids,
         "hasAction": i in action_ids,
+        "hasCustomize": i in customize_ids,
     }

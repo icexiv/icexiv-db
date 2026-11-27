@@ -11,7 +11,7 @@ export default class GameModelViewer extends HTMLElement {
     if (!manifestPath) return;
 
     const root = assetRoot();
-    const {resolveAsset} = await import(new URL('assets.js', root));
+    const {resolveAsset, siteAssets} = await import(new URL('assets.js', root));
     if (!resolveAsset(manifestPath)) return;
 
     const section = document.createElement('section');
@@ -24,6 +24,6 @@ export default class GameModelViewer extends HTMLElement {
     this.replaceChildren(section);
 
     const {mountModelPreview} = await import(new URL('model-viewer.js', root));
-    mountModelPreview(section);
+    mountModelPreview(section, siteAssets());
   }
 }
