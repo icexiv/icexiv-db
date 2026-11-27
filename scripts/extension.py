@@ -10,10 +10,10 @@ import os
 import subprocess
 
 if __package__:
-    from .export_loader import ITEM_CHUNK, ROOT, prepared_catalog
+    from .export_loader import ITEM_CHUNK, QUEST_CHUNK, ROOT, prepared_catalog, prepared_quests
     from .media import Media
 else:
-    from export_loader import ITEM_CHUNK, ROOT, prepared_catalog
+    from export_loader import ITEM_CHUNK, QUEST_CHUNK, ROOT, prepared_catalog, prepared_quests
     from media import Media
 
 
@@ -88,6 +88,8 @@ def extend(request, input_path, limit=None, *, state=None, root=ROOT):
             raise ValueError("before_compile must succeed before before_template")
         data = dict(request["data"])
         data["catalog"] = state["catalog"]
+        if state.get("quests"):
+            data["quests"] = state["quests"]
         data["asset_rev"] = _asset_rev(root)
         build = _build_info(root)
         if build:
@@ -112,11 +114,15 @@ def extend(request, input_path, limit=None, *, state=None, root=ROOT):
 
     documents = dict(request["documents"])
 
-    def add_document(path, template, call):
+    def add_document(path, template, call, title=""):
         if path in documents:
             raise ValueError(f"Generated page conflicts with handwritten content: {path}")
         prefix = "../" * (path.count("/") + 1)
-        documents[path] = f'@!(template: "{template}")\n#import "{prefix}modules/views.not" as views;\n{call}\n'
+        section = "quests" if path.startswith("quests/") else "items"
+        attrs = f'template: "{template}", section: "{section}"'
+        if title:
+            attrs += f", title: {json.dumps(title, ensure_ascii=False)}"
+        documents[path] = f'@!({attrs})\n#import "{prefix}modules/views.not" as views;\n{call}\n'
 
     for position, item_id in enumerate(item_ids):
         path = f"items/{item_id}.md"
@@ -130,8 +136,33 @@ def extend(request, input_path, limit=None, *, state=None, root=ROOT):
         up = "../" * path.count("/")
         add_document(path, "catalog", f'#views.catalog("{up}.data/catalog/page-{page}.json")')
 
+    quests = prepared_quests(root=root)
+    if quests:
+        for position, quest_id in enumerate(quests["items"]):
+            path = f"quests/{quest_id}.md"
+            chunk, index = divmod(position, QUEST_CHUNK)
+            up = "../" * path.count("/")
+            add_document(path, "quest", f'#views.quest("{up}.data/quests/chunks/{chunk}.json", {index})',
+                         title=quests.get("titles", {}).get(str(quest_id), ""))
+
+        for page in range(1, quests["pageCount"] + 1):
+            path = "quests/index.md" if page == 1 else f"quests/page/{page}.md"
+            up = "../" * path.count("/")
+            add_document(path, "quest-catalog",
+                         f'#views.quest_catalog("{up}.data/quests/catalog/page-{page}.json")',
+                         title="任务图鉴")
+
+        for slug, _name, _total in quests["series"]:
+            path = f"quests/series/{slug}.md"
+            up = "../" * path.count("/")
+            add_document(path, "quest-series",
+                         f'#views.quest_series("{up}.data/quests/series/{slug}.json")',
+                         title=f"{_name} · 任务系列")
+
     if state is not None:
         state["catalog"] = catalog
+        if quests:
+            state["quests"] = quests
         if site_assets:
             state["assets"] = site_assets
     return {"version": 2, "event": event, "documents": documents, "data_files": data_files}

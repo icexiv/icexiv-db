@@ -55,6 +55,21 @@ jobs:
         run: |
           python3 scripts/pipeline/manifest.py from-csv "$RUNNER_TEMP/dm" --commit "$DM_COMMIT"
 
+      - name: Build the quest snapshot
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        run: |
+          mkdir -p "$RUNNER_TEMP/dmquests"
+          curl -fsSL --retry 3 --retry-all-errors \
+            "https://codeload.github.com/thewakingsands/ffxiv-datamining-cn/tar.gz/$DM_COMMIT" \
+            -o "$RUNNER_TEMP/dmquests.tar.gz"
+          tar -xzf "$RUNNER_TEMP/dmquests.tar.gz" -C "$RUNNER_TEMP/dmquests" --strip-components=1
+          python3 scripts/pipeline/quest_snapshot.py \
+            --quest-csv "$RUNNER_TEMP/dmquests/Quest.csv" \
+            --data-dir "$RUNNER_TEMP/dmquests" \
+            --text-dir "$RUNNER_TEMP/dmquests/quest" \
+            --items inputs/game-export/items.json \
+            --commit "$DM_COMMIT"
+
       - name: Prepare pure manifest data
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         run: |

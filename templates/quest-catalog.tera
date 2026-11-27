@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    {% include 'head' %}
+    <link rel="stylesheet" href="{{url(path='quest.css')}}?v={{site.data.asset_rev}}">
+  </head>
+  <body>
+    {% include 'header' %}
+    <div class="workspace" id="page-content">
+    <div class="catalog-intro">
+      <div>
+        <h1>任务图鉴</h1>
+        <p class="source-note">国服任务目录 · {{site.data.quests.count}} 条 · {{site.data.quests.source.textCount}} 条含任务流程</p>
+      </div>
+    </div>
+    <main id="quest-catalog-page"
+          data-index-url="{{page.root}}{{site.data.quests.assetPath}}/index.json"
+          data-filters-url="{{page.root}}{{site.data.quests.assetPath}}/filters.json"
+          data-detail-base="{{page.root}}quests/"
+          data-page-size="{{site.data.quests.pageSize}}"
+          data-catalog-url="{{page.root}}quests/index.html">{{page.html | safe}}</main>
+    {% include 'footer' %}
+    </div>
+    {% if site.data.assets is defined %}
+    <script type="application/json" id="site-assets">{{site.data.assets | to_json}}</script>
+    {% endif %}
+    {% if assets.components %}
+    <script type="module" src="{{assets.components}}"></script>
+    {% endif %}
+    <script type="module" src="{{url(path='lookup.js')}}?v={{site.data.asset_rev}}"></script>
+    <script type="module" src="{{url(path='quest-catalog.js')}}?v={{site.data.asset_rev}}"></script>
+  </body>
+</html>

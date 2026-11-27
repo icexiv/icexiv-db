@@ -1,4 +1,4 @@
 <footer>
   <p>非官方 FF14 资料站 · 游戏素材与内容权利归各权利方所有。</p>
-  <p>国服客户端 {{site.data.catalog.source.gameVersion}} · 物品与图标</p>
+  <p>国服客户端 {{site.data.catalog.source.gameVersion}} · 物品、任务与图标</p>
 </footer>

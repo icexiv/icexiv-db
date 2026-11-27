@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    {% include 'head' %}
+    <link rel="stylesheet" href="{{url(path='quest.css')}}?v={{site.data.asset_rev}}">
+  </head>
+  <body>
+    {% include 'header' %}
+    <div class="workspace" id="page-content">
+    <main>{{page.html | safe}}</main>
+    {% include 'footer' %}
+    </div>
+    {% if site.data.assets is defined %}
+    <script type="application/json" id="site-assets">{{site.data.assets | to_json}}</script>
+    {% endif %}
+    <script type="module" src="{{url(path='lookup.js')}}?v={{site.data.asset_rev}}"></script>
+  </body>
+</html>

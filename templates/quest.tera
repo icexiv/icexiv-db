@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    {% include 'head' %}
+    <link rel="stylesheet" href="{{url(path='quest.css')}}?v={{site.data.asset_rev}}">
+  </head>
+  <body>
+    {% include 'header' %}
+    <div class="workspace" id="page-content">
+    <main>{{page.html | safe}}</main>
+    {% include 'footer' %}
+    </div>
+    {% if site.data.assets is defined %}
+    <script type="application/json" id="site-assets">{{site.data.assets | to_json}}</script>
+    {% endif %}
+    {% if assets.components %}
+    <script type="module" src="{{assets.components}}"></script>
+    {% endif %}
+    <script type="module" src="{{url(path='lookup.js')}}?v={{site.data.asset_rev}}"></script>
+    <script type="module" src="{{url(path='catalog-return.js')}}?v={{site.data.asset_rev}}"></script>
+  </body>
+</html>

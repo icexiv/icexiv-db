@@ -1,0 +1,3 @@
+// Semantic external component for the quest detail page.
+// Layout coordinates and fallback content are supplied by the caller.
+fn graph(data: String, fallback: Block) -> Block;

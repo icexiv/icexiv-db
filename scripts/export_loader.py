@@ -15,6 +15,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 PAGE_SIZE = 100
 ITEM_CHUNK = 1000
+QUEST_CHUNK = 500
 RECIPE_SHARD = 128
 RELATIONS_PER_SHARD = 16
 PLACEHOLDER = "/icon-placeholder.svg"
@@ -161,3 +162,9 @@ def prepared_catalog(*, root=ROOT):
     if receipt.get("assetPath") != catalog.get("assetPath"):
         raise ValueError("Run scripts/items.py prepare before building the site")
     return catalog.pop("items"), catalog
+
+
+def prepared_quests(*, root=ROOT):
+    """Return quest catalog metadata, or None when quests were not prepared."""
+    path = root / "content/.data/quests/catalog.json"
+    return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else None

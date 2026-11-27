@@ -12,12 +12,14 @@
     <span class="brand-divider" aria-hidden="true"></span>
     <a class="brand" href="{{url(path='index.html')}}" aria-label="IceXIV DB 首页"><img src="{{url(path='logo.png')}}" width="32" height="32" alt="">DB</a>
     <nav class="primary-nav" aria-label="主导航">
-      <a href="{{url(path='items/index.html')}}" aria-current="location">物品</a>
+      <a href="{{url(path='items/index.html')}}"{% if page.attrs.section == "items" %} aria-current="location"{% endif %}>物品</a>
+      <a href="{{url(path='quests/index.html')}}"{% if page.attrs.section == "quests" %} aria-current="location"{% endif %}>任务</a>
     </nav>
-    <form id="item-lookup" role="search" action="{{page.root}}items/index.html" data-assets="{{page.root}}" data-index="{{page.root}}{{site.data.catalog.assetPath}}/index.json">
+    {% set is_quests = page.attrs.section == "quests" %}
+    <form id="item-lookup" role="search" action="{% if is_quests %}{{page.root}}quests/index.html{% else %}{{page.root}}items/index.html{% endif %}" data-kind="{% if is_quests %}quest{% else %}item{% endif %}" data-assets="{{page.root}}" data-index="{% if is_quests %}{{page.root}}{{site.data.quests.assetPath}}/index.json{% else %}{{page.root}}{{site.data.catalog.assetPath}}/index.json{% endif %}">
       <label class="lookup-entry">
         <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
-        <input type="search" id="lookup-query" name="q" autocomplete="off" aria-keyshortcuts="Control+k Meta+k" aria-label="搜索全部物品" placeholder="搜索物品名称或 ID">
+        <input type="search" id="lookup-query" name="q" autocomplete="off" aria-keyshortcuts="Control+k Meta+k" aria-label="{% if is_quests %}搜索全部任务{% else %}搜索全部物品{% endif %}" placeholder="{% if is_quests %}搜索任务名称或 ID{% else %}搜索物品名称或 ID{% endif %}">
         <kbd aria-hidden="true">Ctrl + K</kbd>
       </label>
       <div id="lookup-results" aria-label="搜索建议" hidden></div>

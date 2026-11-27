@@ -1,5 +1,6 @@
 import "./assets.not" as assets;
 import "./game/lib.not" as game;
+import "./quests/lib.not" as quest_graph;
 
 fn field(label: String, value: String) -> Block {
     para[**#text(label)** #text(value)]
@@ -253,4 +254,276 @@ fn catalog(source: String) -> Block {
         #table_wrap
         #pagination
     ].with_attr("id", "catalog")
+}
+
+fn quest_catalog(source: String) -> Block {
+    let page = read_json(source);
+    let page_size = page.get("pageSize").as_int(0);
+    let label = page.get("label").as_string("");
+    let previous_path = page.get("previous").as_string("");
+    let next_path = page.get("next").as_string("");
+    let records = page.get("items").as_list();
+    let rows = for record in records {
+        let id = record.at(0).as_string("");
+        let name = record.at(1).as_string("");
+        let category = record.at(2).as_string("");
+        let level = record.at(3).as_string("");
+        let place = record.at(4).as_string("");
+        (text(id), link("/quests/" + id + ".html")[#text(name)], text(category), text(level), text(place))
+    };
+    let previous = if previous_path == "" { [] } else { link(previous_path)[上一页] };
+    let next = if next_path == "" { [] } else { link(next_path)[下一页] };
+    let numbers = inlines(for entry in page.get("pagination").as_list() {
+        let number = entry.at(0).as_string("");
+        let path = entry.at(1).as_string("");
+        if number == "…" {
+            text(number)
+        } else if path == "" {
+            strong[#text(number)].with_attr("aria-current", "page")
+        } else {
+            link(path)[#text(number)].with_attr("aria-label", "第 " + number + " 页")
+        }
+    });
+    let status_label = "每页 " + page_size.to_string() + " 个任务 · " + label;
+    let tbl = table(([编号], [任务名称], [类型], [等级], [地点]), rows);
+    let table_wrap = div(tbl).with_attr("class", "table-scroll");
+    let pagination = para[#previous#numbers#next]
+        .with_attr("class", "pagination")
+        .with_attr("role", "navigation")
+        .with_attr("aria-label", "静态任务目录分页");
+    div[
+        #para[#text(status_label)].with_attr("id", "quest-catalog-status")
+        #table_wrap
+        #pagination
+    ].with_attr("id", "quest-catalog")
+}
+
+fn quest(source: String, index: Int) -> Block {
+    let record = read_json(source).at(index);
+    let id = record.get("id").as_string("");
+    let name = record.get("name").as_string("");
+    let level = record.get("level").as_string("");
+    let section_label = record.get("sectionLabel").as_string("");
+    let genre_name = record.get("genreName").as_string("");
+    let category_name = record.get("categoryName").as_string("");
+    let place_name = record.get("placeName").as_string("");
+    let expansion = record.get("expansion").as_string("");
+    let issuer_name = record.get("issuerName").as_string("");
+    let target_name = record.get("targetName").as_string("");
+    let repeatable = record.get("repeatable").as_bool(false);
+    let series = record.get("series");
+    let series_name = series.get("name").as_string("");
+    let series_slug = series.get("slug").as_string("");
+    let series_total = series.get("total").as_int(0);
+    let series_index = series.get("index").as_int(0);
+    let graph_json = record.get("graph").as_string("");
+    let rewards = record.get("rewards");
+    let gil = rewards.get("gil").as_string("0");
+    let exp = rewards.get("exp").as_string("0");
+    let reward_items = rewards.get("items").as_list();
+    let optional_items = rewards.get("optional").as_list();
+    let steps = record.get("steps").as_list();
+    let summary = record.get("summary").as_string("");
+    let next_more = record.get("nextMore").as_int(0);
+    let join_note = if record.get("prev").len() > 1 {
+        if record.get("prevJoin").as_string("and") == "or" {
+            para[完成任一前置任务即可。].with_attr("class", "muted")
+        } else {
+            para[需要完成全部前置任务。].with_attr("class", "muted")
+        }
+    } else { blocks(()) };
+
+    let back = para(link("/quests/index.html")[← 任务目录]).with_attr("class", "back-link");
+    let mark = para[#text(record.get("sectionShort").as_string(section_label))].with_attr("class", "quest-mark");
+    let head = div[
+        #mark
+        #div[
+            #heading(1)[#text(name)]
+            #para[#text("#" + id + " · " + genre_name + " · " + level + " 级")].with_attr("class", "muted")
+        ]
+    ].with_attr("class", "detail-heading quest-detail-head");
+
+    let facts = div[
+        #field("任务 ID", id)
+        #field("等级", level + " 级")
+        #field("资料片", expansion)
+        #field("地点", place_name)
+        #field("起始 NPC", issuer_name)
+        #field("目标 NPC", target_name)
+        #field("可重复", if repeatable { "是" } else { "否" })
+        #field("章节", category_name)
+    ].with_attr("class", "item-fields quest-facts");
+
+    let reward_rows = blocks(for item in reward_items {
+        let item_id = item.at(0).as_string("");
+        let item_name = item.at(1).as_string("");
+        let count = item.at(2).as_int(0);
+        let icon = item.at(3).as_string("0");
+        let item_label = if item_id == "" { text(item_name) } else { link("/items/" + item_id + ".html")[#text(item_name)] };
+        para(image(assets.icon(icon), "").with_attr("class", "item-icon") + item_label + text(" ×" + count.to_string())).with_attr("class", "quest-reward-item")
+    });
+    let optional_rows = blocks(for item in optional_items {
+        let item_id = item.at(0).as_string("");
+        let item_name = item.at(1).as_string("");
+        let count = item.at(2).as_int(0);
+        let icon = item.at(3).as_string("0");
+        let item_label = if item_id == "" { text(item_name) } else { link("/items/" + item_id + ".html")[#text(item_name)] };
+        para(image(assets.icon(icon), "").with_attr("class", "item-icon") + item_label + text(" ×" + count.to_string())).with_attr("class", "quest-reward-item")
+    });
+    let gil_p = if gil == "0" { blocks(()) } else { para[**金币** #text(gil)] };
+    let exp_p = if exp == "0" { blocks(()) } else { para[**经验系数** #text("×" + exp)] };
+    let reward_list = if reward_items.len() == 0 { blocks(()) } else {
+        div(reward_rows).with_attr("class", "quest-reward-list")
+    };
+    let optional_block = if optional_items.len() == 0 { blocks(()) } else {
+        div[
+            #para[**可选奖励**]
+            #div(optional_rows).with_attr("class", "quest-reward-list")
+        ]
+    };
+    let rewards_block = if gil == "0" && exp == "0" && reward_items.len() == 0 && optional_items.len() == 0 {
+        para[无奖励记录。].with_attr("class", "muted")
+    } else {
+        div[
+            #gil_p
+            #exp_p
+            #reward_list
+            #optional_block
+        ].with_attr("class", "quest-rewards")
+    };
+
+    let summary_p = if summary == "" { blocks(()) } else {
+        para[#text(summary)].with_attr("class", "quest-summary")
+    };
+    let step_blocks = for step in steps {
+        para(text(step.as_string("")))
+    };
+    let steps_block = if steps.len() == 0 {
+        para[暂无任务流程记录。].with_attr("class", "muted")
+    } else {
+        list(true, 1, step_blocks).with_attr("class", "quest-steps")
+    };
+
+    let fallback_series = for row in record.get("seriesWindow").as_list() {
+        let sid = row.at(0).as_string("");
+        let sname = row.at(1).as_string("");
+        let slevel = row.at(2).as_string("");
+        let cls = if sid == id { "quest-chain-item quest-chain-current" } else { "quest-chain-item" };
+        para(link("/quests/" + sid + ".html")[#text(sname)] + text(" · " + slevel + " 级")).with_attr("class", cls)
+    };
+    let fallback_prev = for row in record.get("prev").as_list() {
+        let pid = row.at(0).as_string("");
+        let pname = row.at(1).as_string("");
+        let plevel = row.at(2).as_string("");
+        para(link("/quests/" + pid + ".html")[#text(pname)] + text(" · " + plevel + " 级"))
+    };
+    let fallback_next = for row in record.get("nextShow").as_list() {
+        let nid = row.at(0).as_string("");
+        let nname = row.at(1).as_string("");
+        let nlevel = row.at(2).as_string("");
+        para(link("/quests/" + nid + ".html")[#text(nname)] + text(" · " + nlevel + " 级"))
+    };
+    let fallback = div[
+        #heading(3)[系列 · #text(series_name)]
+        #list(true, 1, fallback_series).with_attr("class", "quest-graph-fallback-list")
+        #para[**前置任务**]
+        #list(false, 1, fallback_prev)
+        #para[**后续任务**]
+        #list(false, 1, fallback_next)
+    ].with_attr("class", "quest-graph-fallback");
+
+    let series_note = "系列 · " + series_name + " · " + (series_index + 1).to_string() + " / " + series_total.to_string();
+    let series_link = if series_total > 1 {
+        link("/quests/series/" + series_slug + ".html#q" + id)[完整系列 · #text(series_total.to_string())#text(" 个任务")]
+    } else { [] };
+    let graph_panel = section[
+        #heading(2)[任务关系]
+        #para[#text(series_note) #series_link].with_attr("class", "quest-graph-head")
+        #quest_graph.graph(graph_json, fallback)
+        #para[点击节点切换任务；移动端可横向滚动。无 JS 时显示系列、前置和后续列表。].with_attr("class", "muted")
+    ].with_attr("class", "quest-graph-panel");
+
+    let prev_links = for row in record.get("prev").as_list() {
+        let pid = row.at(0).as_string("");
+        let pname = row.at(1).as_string("");
+        let plevel = row.at(2).as_string("");
+        para(link("/quests/" + pid + ".html")[#text(pname)] + text(" · " + plevel + " 级"))
+    };
+    let lock_links = for row in record.get("lock").as_list() {
+        let lid = row.at(0).as_string("");
+        let lname = row.at(1).as_string("");
+        para(link("/quests/" + lid + ".html")[#text(lname)])
+    };
+    let lock_block = if record.get("lock").len() == 0 { blocks(()) } else {
+        div[
+            #para[**其他前置条件**]
+            #list(false, 1, lock_links)
+        ]
+    };
+    let next_links = for row in record.get("nextShow").as_list() {
+        let nid = row.at(0).as_string("");
+        let nname = row.at(1).as_string("");
+        let nlevel = row.at(2).as_string("");
+        para(link("/quests/" + nid + ".html")[#text(nname)] + text(" · " + nlevel + " 级"))
+    };
+    let prev_block = if record.get("prev").len() == 0 {
+        para[无。].with_attr("class", "muted")
+    } else {
+        list(false, 1, prev_links)
+    };
+    let next_block = if record.get("nextShow").len() == 0 {
+        para[无。].with_attr("class", "muted")
+    } else {
+        list(false, 1, next_links)
+    };
+    let next_more_note = if next_more > 0 {
+        para(text("还有 ") + text(next_more.to_string()) + text(" 个后续任务。")).with_attr("class", "muted")
+    } else { blocks(()) };
+    let chain_section = section[
+        #heading(2)[前置与后续]
+        #para[**前置任务**]
+        #join_note
+        #prev_block
+        #lock_block
+        #para[**后续任务**]
+        #next_block
+        #next_more_note
+    ].with_attr("class", "quest-chain-section");
+    let steps_section = section[
+        #heading(2)[任务流程]
+        #summary_p
+        #steps_block
+    ].with_attr("class", "quest-steps-section");
+
+    div[
+        #back
+        #head
+        #facts
+        #graph_panel
+        #rewards_block
+        #steps_section
+        #chain_section
+    ].with_attr("id", "quest-detail")
+}
+
+fn quest_series(source: String) -> Block {
+    let record = read_json(source);
+    let name = record.get("name").as_string("");
+    let total = record.get("total").as_int(0);
+    let rows = record.get("rows").as_list();
+    let items = for row in rows {
+        let id = row.at(0).as_string("");
+        let qname = row.at(1).as_string("");
+        let level = row.at(2).as_string("");
+        let place = row.at(3).as_string("");
+        para(link("/quests/" + id + ".html")[#text(qname)].with_attr("id", "q" + id) + text(" · " + level + " 级 · " + place))
+    };
+    let back = para(link("/quests/index.html")[← 任务目录]).with_attr("class", "back-link");
+    let list_block = list(true, 1, items).with_attr("class", "quest-series-list");
+    div[
+        #back
+        #heading(1)[#text(name)#text(" · 任务系列")]
+        #para[#text(total.to_string())#text(" 个任务 · 点击任务查看详情")].with_attr("class", "muted")
+        #list_block
+    ].with_attr("id", "quest-series")
 }

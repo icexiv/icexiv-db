@@ -32,6 +32,10 @@ def catalog_metadata(export, digest, count):
     return _loader.catalog_metadata(export, digest, count, root=ROOT)
 
 
+def prepared_quests():
+    return _loader.prepared_quests(root=ROOT)
+
+
 def prepared_catalog():
     return _loader.prepared_catalog(root=ROOT)
 

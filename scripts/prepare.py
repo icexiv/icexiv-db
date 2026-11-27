@@ -15,12 +15,14 @@ if __package__:
         catalog_metadata, catalog_pages, category_name, load_export, write_json,
     )
     from .recipe_data import write_recipe_and_relations
+    from .quest_data import prepare_quests
 else:
     from export_loader import (
         CATEGORIES, ITEM_CHUNK, ROOT,
         catalog_metadata, catalog_pages, category_name, load_export, write_json,
     )
     from recipe_data import write_recipe_and_relations
+    from quest_data import prepare_quests
 
 
 def _read(root, rel_path):
@@ -170,6 +172,7 @@ def prepare(input_path, *, root=ROOT, emit_json=write_json):
 
     # The build reads only this directory: routes plus the catalog identity.
     emit_json(private / "catalog.json", dict(catalog, items=[item["id"] for item in records]))
+    prepare_quests(root=root, records=records, emit_json=emit_json)
     # Publish the receipt last: incomplete preparation must not be used by a build.
     emit_json(private / "prepared.json", {"assetPath": asset_path})
     print(f"Prepared {len(records)} item records and {len(pages)} catalog pages")
