@@ -6,7 +6,7 @@ set -euo pipefail
 
 BASE="/srv/db.icexiv.top"
 RELEASES="$BASE/releases"
-TOS_BASE="https://icexiv.tos-cn-beijing.volces.com/_deploy"
+TOS_BASE="https://cdn.icexiv.top/_deploy"
 
 read -r FILENAME EXPECTED_SHA256 || { echo "Expected '<filename> <sha256>' on stdin" >&2; exit 1; }
 

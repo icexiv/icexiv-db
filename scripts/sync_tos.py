@@ -26,6 +26,7 @@ import gzip
 import hashlib
 import hmac
 import http.client
+import io
 import os
 from pathlib import Path
 import sys
@@ -182,7 +183,11 @@ class S3Client:
             )
             try:
                 conn = self._conn()
-                conn.request(method, target, body=body, headers=headers)
+                if body:
+                    headers["Content-Length"] = str(len(body))
+                    conn.request(method, target, body=io.BytesIO(body), headers=headers)
+                else:
+                    conn.request(method, target, body=body, headers=headers)
                 resp = conn.getresponse()
                 data = resp.read()
                 if 200 <= resp.status < 300:
