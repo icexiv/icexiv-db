@@ -6,6 +6,8 @@ resolver configuration at ``notist serve`` / ``notist build`` time via ``scripts
 
 import hashlib
 import json
+import os
+import subprocess
 
 if __package__:
     from .export_loader import ITEM_CHUNK, ROOT, prepared_catalog
@@ -48,6 +50,35 @@ def _asset_rev(root):
     return digest.hexdigest()[:10]
 
 
+def _build_info(root):
+    commit = ""
+    subject = ""
+    date = ""
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(root), "log", "-1", "--format=%h%x00%s%x00%cI"],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=5,
+        ).stdout.strip()
+        parts = out.split("\0")
+        if len(parts) == 3 and parts[0]:
+            commit, subject, date = parts[0], parts[1].strip(), parts[2].strip()
+    except (OSError, subprocess.SubprocessError):
+        pass
+    if not commit:
+        sha = os.getenv("GITHUB_SHA", "").strip()
+        if sha:
+            commit = sha[:7]
+    if not commit:
+        return None
+    title = f"{subject} ({commit})" if subject else f"提交 {commit}"
+    if date:
+        title = f"{title} · {date[:16].replace('T', ' ')}"
+    return {"commit": commit, "subject": subject, "date": date, "title": title}
+
+
 def extend(request, input_path, limit=None, *, state=None, root=ROOT):
     if request.get("version") != 2:
         raise ValueError("Unsupported Notist site extension protocol")
@@ -58,6 +89,9 @@ def extend(request, input_path, limit=None, *, state=None, root=ROOT):
         data = dict(request["data"])
         data["catalog"] = state["catalog"]
         data["asset_rev"] = _asset_rev(root)
+        build = _build_info(root)
+        if build:
+            data["build"] = build
         if state.get("assets"):
             data["assets"] = state["assets"]
         return {"version": 2, "event": event, "data": data}

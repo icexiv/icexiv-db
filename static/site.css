@@ -35,8 +35,13 @@ a:hover {text-decoration:underline;text-underline-offset:4px}
 .primary-nav [aria-current] {color:var(--ink)}
 .handbook-link {display:grid;place-items:center;flex:none;width:2rem;height:2rem;border:1px solid var(--line);border-radius:8px;color:var(--dim);transition:background-color 150ms,color 150ms}
 .handbook-link[aria-current] {background:var(--selected);color:var(--ink)}
+.header-actions {display:inline-flex;align-items:center;gap:.5rem;flex:none}
+.header-icon-btn,.header-commit-link {display:inline-flex;align-items:center;justify-content:center;height:2rem;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--dim);transition:background-color 150ms,color 150ms}
+.header-icon-btn {width:2rem}
+.header-commit-link {gap:.375rem;padding:0 .625rem;font-size:.75rem;font-weight:500}
+.header-commit-link span {font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
 @media (hover:hover) {
-  .handbook-link:hover {background:var(--selected);color:var(--ink)}
+  .handbook-link:hover,.header-icon-btn:hover,.header-commit-link:hover {background:var(--selected);color:var(--ink)}
   .network-brand:hover,.brand:hover {opacity:.7}
   .primary-nav a:hover {color:var(--ink)}
 }
@@ -271,7 +276,7 @@ footer {display:flex;flex-wrap:wrap;justify-content:space-between;gap:.5rem;bord
   .job-line {grid-template-columns:1fr;justify-items:start}
 }
 @media(max-width:38rem) {
-  .network-brand span,.lookup-entry kbd {display:none}
+  .network-brand span,.lookup-entry kbd,.header-actions {display:none}
   .primary-nav {flex-shrink:0}
   .header-inner,.primary-nav {gap:.75rem}
   .primary-nav {margin-left:0}
