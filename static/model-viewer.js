@@ -212,7 +212,7 @@ export function mountModelPreview(host, assets = null) {
         toggle.setAttribute('aria-pressed', 'false');
         if (part.effect && !fallback) {
           try {
-            await current.openWeapon(part.effect, (p, sha) => loader.loadFile(p, sha, partSignal));
+            await current.openItem(part.effect, (p, sha) => loader.loadFile(p, sha, partSignal));
             partSignal.throwIfAborted();
             current.addEventListener('rendererror', e => {
               if (!partSignal.aborted) load(part, e.detail.message).catch(fail);
@@ -223,7 +223,7 @@ export function mountModelPreview(host, assets = null) {
             toggle.hidden = false;
             current.append(toggle, replay);
             progress(null);
-            status.textContent = part.effect.diagnostics?.length ? `武器特效有 ${part.effect.diagnostics.length} 项限制，见文件明细。` : '';
+            status.textContent = part.effect.diagnostics?.length ? `特效有 ${part.effect.diagnostics.length} 项限制，见文件明细。` : '';
             await setPlaying(true);
             return;
           } catch (e) {
@@ -405,13 +405,14 @@ export function mountModelPreview(host, assets = null) {
           await vp.openScene();
           pSig.throwIfAborted();
           const readObj = (path, sha) => loader.read(path, sha, pSig);
+          const effectFiles = Object.assign({}, ...parts.map(p => p.effect?.files ?? {}));
           if (tryOn.host === 'chocobo') {
             progress('model-files');
             const choco = await fetch(resolveAsset('models/actions/actors/chocobo.json'), {signal: pSig}).then(r => {
               if (!r.ok) throw Error(`陆行鸟模型 HTTP ${r.status}`);
               return r.json();
             });
-            const merged = {...choco.files, ...manifest.files};
+            const merged = {...choco.files, ...manifest.files, ...effectFiles};
             await vp.setStandalone(tryOn.spec, merged, readObj);
             progress(null);
             status.textContent = '陆行鸟试穿预览，拖动旋转视角。';
@@ -421,9 +422,9 @@ export function mountModelPreview(host, assets = null) {
             progress('actor-files');
             const actor = await actorFor(key);
             await vp.setCameraPreset(tryOn.preset || 'full');
-            await vp.setActorBundle(actor, readObj, tryOn.equipment ? {equipment: tryOn.equipment, files: manifest.files} : {});
+            await vp.setActorBundle(actor, readObj, tryOn.equipment ? {equipment: tryOn.equipment, files: {...manifest.files, ...effectFiles}} : {files: effectFiles});
             if (tryOn.prop) {
-              await vp.addProp('tryon-weapon', tryOn.prop.modelMain, tryOn.prop.bone, manifest.files, readObj);
+              await vp.addProp('tryon-weapon', tryOn.prop.modelMain, tryOn.prop.bone, {...manifest.files, ...effectFiles}, readObj);
             }
             progress(null);
             status.textContent = '角色试穿预览，可切换种族、性别与镜头预设。';
