@@ -33,6 +33,12 @@ function materialVariant(part) {
   return 1;
 }
 
+function primaryPartIndex(manifest) {
+  const parts = manifest.parts ?? [manifest];
+  const effectPart = parts.findIndex(part => part.effect);
+  return Math.min(manifest.defaultPart ?? (effectPart >= 0 ? effectPart : 0), Math.max(0, parts.length - 1));
+}
+
 function tryOnInfo(manifest) {
   const parts = manifest.parts ?? [manifest];
   if (manifest.kind === 'barding') {
@@ -50,21 +56,26 @@ function tryOnInfo(manifest) {
     return found ? {host: 'chocobo', spec} : null;
   }
   if (manifest.kind === 'armor' || manifest.kind === 'accessory') {
-    const p = parts[manifest.defaultPart ?? 0];
+    const p = parts[primaryPartIndex(manifest)];
     const m = /chara\/(?:equipment|accessory)\/[ea](\d{4})\/model\/c\d{4}[ea]\d{4}_(met|top|glv|dwn|sho|ear|nek|wrs|rir|ril)\.mdl$/.exec(p?.model ?? '');
     if (!m || !SLOT_CATEGORY[m[2]]) return null;
     const id = BigInt(Number(m[1])), v = BigInt(materialVariant(p));
-    const modelMain = String((v << 16n) | id);
+    const modelMain = p?.effect?.main !== undefined
+      ? String(p.effect.main)
+      : String((v << 16n) | id);
     const preset = ['met', 'ear', 'nek'].includes(m[2]) ? 'head' : 'full';
     return {host: 'actor', equipment: [{modelMain, equipSlotCategory: SLOT_CATEGORY[m[2]], itemId: 0, stainIds: [0, 0]}], preset};
   }
   if (manifest.kind === 'weapon' || manifest.kind === 'heldProp') {
-    const p = parts[manifest.defaultPart ?? 0];
+    const p = parts[primaryPartIndex(manifest)];
     const m = /chara\/weapon\/w(\d{4})\/obj\/body\/b(\d{4})\/model\//.exec(p?.model ?? '');
     if (!m) return null;
     const w = BigInt(Number(m[1])), b = BigInt(Number(m[2])), v = BigInt(materialVariant(p));
-    const modelMain = String((v << 32n) | (b << 16n) | w);
-    return {host: 'actor', prop: {modelMain, bone: 'n_buki_r'}, preset: 'full'};
+    const modelMain = p?.effect?.main !== undefined
+      ? String(p.effect.main)
+      : String((v << 32n) | (b << 16n) | w);
+    const bone = /\/weapon\/w01\d\d\//.test(p?.model ?? '') ? 'n_buki_tate_l' : 'n_buki_r';
+    return {host: 'actor', prop: {modelMain, bone}, preset: 'full'};
   }
   return null;
 }
@@ -223,7 +234,11 @@ export function mountModelPreview(host, assets = null) {
             toggle.hidden = false;
             current.append(toggle, replay);
             progress(null);
-            status.textContent = part.effect.diagnostics?.length ? `特效有 ${part.effect.diagnostics.length} 项限制，见文件明细。` : '';
+            const limitations = part.effect.diagnostics?.length ?? 0;
+            const approximations = part.effect.notes?.length ?? 0;
+            status.textContent = limitations || approximations
+              ? `特效：${limitations} 项限制 · ${approximations} 项预览说明，见文件明细。`
+              : '';
             await setPlaying(true);
             return;
           } catch (e) {
@@ -315,7 +330,7 @@ export function mountModelPreview(host, assets = null) {
         select.disabled = true;
         select.setAttribute('aria-label', '选择单独预览的模型部件');
         parts.forEach((p, i) => select.add(new Option(`${manifest.alternativeForms ? '外观' : '部件'} ${i + 1}：${p.model.split('/').pop()}`, i)));
-        select.selectedIndex = manifest.defaultPart ?? 0;
+        select.selectedIndex = primaryPartIndex(manifest);
         closeBtn.before(select);
         select.onchange = async () => {
           select.disabled = true;
@@ -450,7 +465,7 @@ export function mountModelPreview(host, assets = null) {
             } else {
               tryOnTools.hidden = true;
               if (select) select.hidden = false;
-              await load(parts[select ? Number(select.value) : (manifest.defaultPart ?? 0)]);
+              await load(parts[select ? Number(select.value) : primaryPartIndex(manifest)]);
             }
           };
         }
@@ -461,7 +476,11 @@ export function mountModelPreview(host, assets = null) {
       const paths = new Set([...Object.keys(manifest.files), ...parts.flatMap(p => Object.keys(p.effect?.files ?? {}))]);
       summary.textContent = `关联游戏文件（${paths.size}） · ${manifest.version ?? manifest.gameVersion}`;
       const list = document.createElement('ul');
-      for (const item of [...paths, ...new Set(parts.flatMap(p => (p.effect?.diagnostics ?? []).map(d => `特效：${d}`)))]) {
+      const effectNotes = parts.flatMap(p => [
+        ...(p.effect?.diagnostics ?? []).map(d => `特效：${d}`),
+        ...(p.effect?.notes ?? []).map(d => `说明：${d}`),
+      ]);
+      for (const item of [...paths, ...new Set(effectNotes)]) {
         const li = document.createElement('li');
         li.textContent = item;
         list.append(li);
@@ -479,7 +498,7 @@ export function mountModelPreview(host, assets = null) {
         details.append(label, issues);
       }
       controls.append(details);
-      await load(parts[manifest.defaultPart ?? 0]);
+      await load(parts[primaryPartIndex(manifest)]);
       if (select && !signal.aborted) select.disabled = false;
     } catch (err) { fail(err); }
     finally { if (!signal.aborted) button.disabled = false; }

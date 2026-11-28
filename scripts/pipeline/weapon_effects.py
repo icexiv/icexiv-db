@@ -26,6 +26,28 @@ SLOT_CATEGORY = {"met": 3, "top": 4, "glv": 5, "dwn": 7, "sho": 8,
 BARDING_SLOTS = ("met", "top", "sho")
 SUPPORTED_KINDS = {"weapon", "heldProp", "armor", "accessory", "facewear",
                    "barding", "mount", "companion", "ornament"}
+NOTE_PATTERNS = (
+    "ICSK=",
+    "VRY direction curves",
+    "continuous integration",
+    "PICd=4 uses normalized inheritance",
+    "PICd=7 uses normalized inheritance",
+    "PICd=9 uses normalized inheritance",
+    "Linear binder has limited local matrix preview support",
+    "outside Tex table",
+)
+
+
+def split_diagnostics(desc):
+    """Keep approximation notes out of the actionable diagnostic count."""
+    diagnostics = desc.get("diagnostics") or []
+    notes = list(desc.get("notes") or [])
+    for message in diagnostics:
+        if any(pattern in message for pattern in NOTE_PATTERNS) and message not in notes:
+            notes.append(message)
+    if notes:
+        desc["notes"] = notes
+    desc["diagnostics"] = [message for message in diagnostics if message not in notes]
 
 
 def material_package(data):
@@ -198,6 +220,7 @@ def attach(game, audit_path, library, report_path, only=None):
                     issues.setdefault(i, []).append(
                         f"VFX owner differs from preview geometry: {owner}")
                     continue
+                split_diagnostics(desc)
                 part["effect"] = desc
                 attached = True
                 if desc.get("diagnostics"):
